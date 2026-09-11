@@ -142,3 +142,31 @@ Check the toast message. Common causes:
 - Network issues during signing
 - The dApp cancelled the request before you responded
 - Session expired or was disconnected by the dApp
+
+### Firefox: "Generating seed phrase" hangs or import fails
+
+Firefox's "Manage Data" storage UI can leave IndexedDB in a corrupt state
+where the database exists but the object store is missing. Symptoms:
+
+- Create wallet stuck on "Generating seed phrase…"
+- Import fails at "checking existing wallet"
+- Console shows: `IDBDatabase.transaction: 'keyval' is not a known object store name`
+
+**Quick fix (full clear):**
+
+1. Open Firefox DevTools (F12)
+2. Go to **Storage** tab → **Indexed DB**
+3. Right-click the Vite origin (e.g., `http://localhost:5173`)
+4. Select **Delete All**
+5. Reload the page
+
+**Alternative: Firefox Settings**
+
+1. Open **Settings → Privacy & Security → Cookies and Site Data → Manage Data**
+2. Search for `localhost` (or your Vite origin)
+3. Select the entry and click **Remove Selected**
+4. Click **Save Changes**
+5. Reload the wallet
+
+**Note:** Recent builds include automatic recovery for this issue. If you're
+on an older build, the full clear above is the workaround.

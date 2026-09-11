@@ -3,7 +3,10 @@
 // https://github.com/marmot-protocol/marmot/blob/master/features/multi-device.md
 
 import { bytesToHex } from '@noble/hashes/utils';
-import { get as idbGet, set as idbSet } from 'idb-keyval';
+import {
+  resilientGet as idbGet,
+  resilientSet as idbSet,
+} from '../../../utils/resilientIdbKeyval';
 import SecretCryptoService from '../../../services/SecretCryptoService';
 import {
   decode,

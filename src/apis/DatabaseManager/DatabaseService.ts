@@ -6,7 +6,10 @@ import {
   createTransactionDetailsTable,
   createMultisigTables,
 } from '../../utils/schema/schema';
-import { get as idbGet, set as idbSet } from 'idb-keyval';
+import {
+  resilientGet as idbGet,
+  resilientSet as idbSet,
+} from '../../utils/resilientIdbKeyval';
 import { logError } from '../../utils/errorHandling';
 import SecretCryptoService, {
   SECRET_ENC_PREFIX,
