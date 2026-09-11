@@ -1,6 +1,11 @@
 import { useDispatch, useSelector } from 'react-redux';
 import { Toast } from '@capacitor/toast';
-import { binToHex, lockingBytecodeToCashAddress } from '@bitauth/libauth';
+import {
+  binToHex,
+  decodeTransaction,
+  hexToBin,
+  lockingBytecodeToCashAddress,
+} from '@bitauth/libauth';
 import type { AppDispatch, RootState } from '../../state/store';
 import {
   approveWizardSignRequest,
@@ -57,10 +62,20 @@ export default function WizardSignTransactionModal() {
 
   const connection = connections[pending.connectionId];
   const payload = pending.request.transaction;
-  const tx =
-    payload.transaction && typeof payload.transaction === 'object'
-      ? payload.transaction
-      : null;
+  // TokenSales may send raw tx hex; structured objects are preferred for UI.
+  const tx = (() => {
+    const raw = payload.transaction;
+    if (raw && typeof raw === 'object') return raw;
+    if (typeof raw === 'string' && raw.trim()) {
+      try {
+        const decoded = decodeTransaction(hexToBin(raw.trim()));
+        return typeof decoded === 'string' ? null : decoded;
+      } catch {
+        return null;
+      }
+    }
+    return null;
+  })();
   const sourceOutputs = payload.sourceOutputs ?? [];
   const outputs = tx?.outputs ?? [];
   const totalInput = (sourceOutputs as TxInputSource[]).reduce(

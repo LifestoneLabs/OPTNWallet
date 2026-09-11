@@ -12,8 +12,6 @@ import {
   lockingBytecodeToCashAddress,
   secp256k1,
   sha256,
-  type Input,
-  type Output,
   type Transaction,
   type TransactionTemplateFixed,
   walletTemplateP2pkhNonHd,
@@ -21,13 +19,16 @@ import {
 } from '@bitauth/libauth';
 import { DerivationPath } from '@wizardconnect/wallet';
 import type { SignTransactionRequest } from '@wizardconnect/core';
-import type { ContractInfo } from '../../types/wcInterfaces';
 import type { Network } from '../../state/slices/networkSlice';
 import { PREFIX } from '../../utils/constants';
 import { ensureUint8Array } from '../../utils/binary';
 import { getPublicKeyCompressed } from '../../utils/hex';
 import { zeroize } from '../../utils/secureMemory';
 import { derivePrivateKeyForPath } from './derivation';
+import {
+  reviveSourceOutputs,
+  reviveTransactionBins,
+} from './reviveSourceOutputs';
 
 type WalletSeedMaterial = {
   mnemonic: string;
@@ -54,19 +55,23 @@ export async function signWizardConnectTransaction(
   wallet: WalletSeedMaterial
 ): Promise<string> {
   const payload = request.transaction;
-  const txDetails =
+  const decodedTx =
     typeof payload.transaction === 'string'
       ? decodeTransaction(hexToBin(payload.transaction))
       : payload.transaction;
-  const sourceOutputs = payload.sourceOutputs as (Input & Output & ContractInfo)[];
 
-  if (!txDetails || typeof txDetails === 'string') {
+  if (!decodedTx || typeof decodedTx === 'string') {
     throw new Error(
       'WizardConnect transaction payload must include a structured transaction or valid raw hex'
     );
   }
 
-  if (!Array.isArray(sourceOutputs) || sourceOutputs.length === 0) {
+  // TokenSales (and similar dapps) sanitize bins to hex strings and satoshis to
+  // decimal strings before transport. Revive before libauth generateTransaction.
+  const txDetails = reviveTransactionBins(decodedTx);
+  const sourceOutputs = reviveSourceOutputs(payload.sourceOutputs);
+
+  if (sourceOutputs.length === 0) {
     throw new Error('WizardConnect request is missing source outputs');
   }
 
