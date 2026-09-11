@@ -130,6 +130,9 @@ export function useHomeConnect() {
         setPopupOpen(false);
         await dispatch(initWizardConnect(currentWalletId)).unwrap();
         await dispatch(wizardConnectPair(parsed.uri)).unwrap();
+        await Toast.show({
+          text: t('homeConnect.wizardPairingStarted'),
+        });
         setUri('');
         return true;
       }

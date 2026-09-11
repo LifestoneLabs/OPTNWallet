@@ -55,10 +55,12 @@ export const localeConnectionOverrides: Partial<
     'wc.scanQr': 'Escanear QR',
     'wc.connect': 'Conectar',
     'homeConnect.description':
-      'Cole ou escaneie um convite CashConnect, uma URI WalletConnect ou um endereço de pagamento. As solicitações são aprovadas na tela inicial.',
-    'homeConnect.placeholder': 'bch-cc-v1:… ou wc:…',
+      'Cole ou escaneie um convite CashConnect, uma URI WalletConnect, uma URI Wizard ou um endereço de pagamento. As solicitações são aprovadas na tela inicial.',
+    'homeConnect.placeholder': 'bch-cc-v1:… ou wc:… ou wiz://…',
     'homeConnect.pasteUri':
       'Cole ou escaneie uma URI de conexão ou um endereço de pagamento.',
+    'homeConnect.wizardPairingStarted':
+      'Pareamento do WizardConnect iniciado. Aprove as solicitações na tela inicial.',
     'wc.noQr': 'Nenhum código QR detectado. Tente novamente.',
     'wc.validUri': 'Insira uma URI válida do WalletConnect.',
     'wc.pairingStarted': 'Pareamento do WalletConnect iniciado.',
@@ -215,10 +217,12 @@ export const localeConnectionOverrides: Partial<
     'wc.scanQr': 'Quét QR',
     'wc.connect': 'Kết nối',
     'homeConnect.description':
-      'Dán hoặc quét lời mời CashConnect, URI WalletConnect hoặc địa chỉ thanh toán. Phê duyệt yêu cầu ngay trên Trang chủ.',
-    'homeConnect.placeholder': 'bch-cc-v1:… hoặc wc:…',
+      'Dán hoặc quét lời mời CashConnect, URI WalletConnect, URI Wizard hoặc địa chỉ thanh toán. Phê duyệt yêu cầu ngay trên Trang chủ.',
+    'homeConnect.placeholder': 'bch-cc-v1:… hoặc wc:… hoặc wiz://…',
     'homeConnect.pasteUri':
       'Dán hoặc quét URI kết nối hoặc địa chỉ thanh toán.',
+    'homeConnect.wizardPairingStarted':
+      'Đã bắt đầu ghép nối WizardConnect. Phê duyệt yêu cầu từ Trang chủ.',
     'wc.noQr': 'Không phát hiện mã QR. Hãy thử lại.',
     'wc.validUri': 'Hãy cung cấp URI WalletConnect hợp lệ.',
     'wc.pairingStarted': 'Đã bắt đầu ghép nối WalletConnect.',
@@ -365,9 +369,11 @@ export const localeConnectionOverrides: Partial<
     'wc.scanQr': '掃描 QR',
     'wc.connect': '連線',
     'homeConnect.description':
-      '貼上或掃描 CashConnect 邀請、WalletConnect URI 或付款地址。請在首頁核准請求。',
-    'homeConnect.placeholder': 'bch-cc-v1:… 或 wc:…',
+      '貼上或掃描 CashConnect 邀請、WalletConnect URI、Wizard URI 或付款地址。請在首頁核准請求。',
+    'homeConnect.placeholder': 'bch-cc-v1:… 或 wc:… 或 wiz://…',
     'homeConnect.pasteUri': '貼上或掃描連線 URI 或付款地址。',
+    'homeConnect.wizardPairingStarted':
+      'WizardConnect 配對已開始。請在首頁核准請求。',
     'wc.noQr': '未偵測到 QR 碼。請再試一次。',
     'wc.validUri': '請提供有效的 WalletConnect URI。',
     'wc.pairingStarted': 'WalletConnect 配對已開始。',
@@ -509,10 +515,12 @@ export const localeConnectionOverrides: Partial<
     'wc.scanQr': 'Scanner un QR',
     'wc.connect': 'Connecter',
     'homeConnect.description':
-      'Collez ou scannez une invitation CashConnect, un URI WalletConnect ou une adresse de paiement. Les demandes sont approuvées depuis l’accueil.',
-    'homeConnect.placeholder': 'bch-cc-v1:… ou wc:…',
+      'Collez ou scannez une invitation CashConnect, un URI WalletConnect, un URI Wizard ou une adresse de paiement. Les demandes sont approuvées depuis l’accueil.',
+    'homeConnect.placeholder': 'bch-cc-v1:… ou wc:… ou wiz://…',
     'homeConnect.pasteUri':
       'Collez ou scannez un URI de connexion ou une adresse de paiement.',
+    'homeConnect.wizardPairingStarted':
+      "Appairage WizardConnect démarré. Approuvez les demandes depuis l'accueil.",
     'wc.noQr': 'Aucun QR détecté. Réessayez.',
     'wc.validUri': 'Veuillez fournir une URI WalletConnect valide.',
     'wc.pairingStarted': 'Appairage WalletConnect commencé.',
@@ -666,9 +674,11 @@ export const localeConnectionOverrides: Partial<
     'wc.scanQr': 'QR 스캔',
     'wc.connect': '연결',
     'homeConnect.description':
-      'CashConnect 초대, WalletConnect URI 또는 결제 주소를 붙여넣거나 스캔하세요. 요청은 홈에서 승인합니다.',
-    'homeConnect.placeholder': 'bch-cc-v1:… 또는 wc:…',
+      'CashConnect 초대, WalletConnect URI, Wizard URI 또는 결제 주소를 붙여넣거나 스캔하세요. 요청은 홈에서 승인합니다.',
+    'homeConnect.placeholder': 'bch-cc-v1:… 또는 wc:… 또는 wiz://…',
     'homeConnect.pasteUri': '연결 URI 또는 결제 주소를 붙여넣거나 스캔하세요.',
+    'homeConnect.wizardPairingStarted':
+      'WizardConnect 페어링이 시작되었습니다. 홈에서 요청을 승인하세요.',
     'wc.noQr': 'QR 코드를 감지하지 못했습니다. 다시 시도하세요.',
     'wc.validUri': '유효한 WalletConnect URI를 입력하세요.',
     'wc.pairingStarted': 'WalletConnect 페어링을 시작했습니다.',
@@ -815,10 +825,12 @@ export const localeConnectionOverrides: Partial<
     'wc.scanQr': 'QR をスキャン',
     'wc.connect': '接続',
     'homeConnect.description':
-      'CashConnect 招待、WalletConnect URI、または支払いアドレスを貼り付けるかスキャンしてください。リクエストはホームで承認します。',
-    'homeConnect.placeholder': 'bch-cc-v1:… または wc:…',
+      'CashConnect 招待、WalletConnect URI、Wizard URI、または支払いアドレスを貼り付けるかスキャンしてください。リクエストはホームで承認します。',
+    'homeConnect.placeholder': 'bch-cc-v1:… または wc:… または wiz://…',
     'homeConnect.pasteUri':
       '接続 URI または支払いアドレスを貼り付けるかスキャンしてください。',
+    'homeConnect.wizardPairingStarted':
+      'WizardConnect のペアリングを開始しました。ホームからリクエストを承認してください。',
     'wc.noQr': 'QR コードを検出できません。もう一度お試しください。',
     'wc.validUri': '有効な WalletConnect URI を入力してください。',
     'wc.pairingStarted': 'WalletConnect のペアリングを開始しました。',
@@ -981,10 +993,12 @@ export const localeConnectionOverrides: Partial<
     'wc.scanQr': 'Сканировать QR',
     'wc.connect': 'Подключить',
     'homeConnect.description':
-      'Вставьте или отсканируйте приглашение CashConnect, URI WalletConnect или платёжный адрес. Запросы подтверждаются на главном экране.',
-    'homeConnect.placeholder': 'bch-cc-v1:… или wc:…',
+      'Вставьте или отсканируйте приглашение CashConnect, URI WalletConnect, URI Wizard или платёжный адрес. Запросы подтверждаются на главном экране.',
+    'homeConnect.placeholder': 'bch-cc-v1:… или wc:… или wiz://…',
     'homeConnect.pasteUri':
       'Вставьте или отсканируйте URI подключения или платёжный адрес.',
+    'homeConnect.wizardPairingStarted':
+      'Сопряжение WizardConnect начато. Подтвердите запросы на главном экране.',
     'wc.noQr': 'QR-код не обнаружен. Повторите попытку.',
     'wc.validUri': 'Укажите действительный URI WalletConnect.',
     'wc.pairingStarted': 'Сопряжение WalletConnect начато.',
@@ -1132,10 +1146,12 @@ export const localeConnectionOverrides: Partial<
     'wc.scanQr': 'Duba QR',
     'wc.connect': 'Haɗa',
     'homeConnect.description':
-      'Manna ko duba gayyatar CashConnect, URI na WalletConnect, ko adireshin biyan kuɗi. Ana amince da buƙatu a Shafin gida.',
-    'homeConnect.placeholder': 'bch-cc-v1:… ko wc:…',
+      'Manna ko duba gayyatar CashConnect, URI na WalletConnect, URI na Wizard, ko adireshin biyan kuɗi. Ana amince da buƙatu a Shafin gida.',
+    'homeConnect.placeholder': 'bch-cc-v1:… ko wc:… ko wiz://…',
     'homeConnect.pasteUri':
       'Manna ko duba URI na haɗi ko adireshin biyan kuɗi.',
+    'homeConnect.wizardPairingStarted':
+      'An fara haɗa WizardConnect. Amince da buƙatu daga Shafin gida.',
     'wc.noQr': 'Ba a gano lambar QR ba. Sake gwadawa.',
     'wc.validUri': 'Bayar da ingantaccen URI na WalletConnect.',
     'wc.pairingStarted': 'An fara haɗa WalletConnect.',

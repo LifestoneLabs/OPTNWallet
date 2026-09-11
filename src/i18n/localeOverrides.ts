@@ -1271,9 +1271,11 @@ export const localeOverrides = {
     'wc.scanQr': 'مسح QR',
     'wc.connect': 'اتصال',
     'homeConnect.description':
-      'ألصق أو امسح دعوة CashConnect أو URI لـ WalletConnect أو عنوان دفع. تتم الموافقة على الطلبات من الصفحة الرئيسية.',
-    'homeConnect.placeholder': 'bch-cc-v1:… أو wc:…',
+      'ألصق أو امسح دعوة CashConnect أو URI لـ WalletConnect أو URI لـ Wizard أو عنوان دفع. تتم الموافقة على الطلبات من الصفحة الرئيسية.',
+    'homeConnect.placeholder': 'bch-cc-v1:… أو wc:… أو wiz://…',
     'homeConnect.pasteUri': 'ألصق أو امسح URI للاتصال أو عنوان دفع.',
+    'homeConnect.wizardPairingStarted':
+      'بدأ اقتران WizardConnect. وافق على الطلبات من الصفحة الرئيسية.',
     'wc.noQr': 'لم يتم العثور على رمز QR. حاول مرة أخرى.',
     'wc.validUri': 'أدخل URI صالحًا لـ WalletConnect.',
     'wc.pairingStarted': 'بدأ اقتران WalletConnect.',

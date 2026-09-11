@@ -60,6 +60,8 @@ export const remainingTranslations = {
     'homeConnect.placeholder': 'bch-cc-v1:… or wc:… or wiz://…',
     'homeConnect.pasteUri':
       'Paste or scan a connection URI or payment address.',
+    'homeConnect.wizardPairingStarted':
+      'WizardConnect pairing started. Approve requests from Home.',
     'wc.noQr': 'No QR code detected. Try again.',
     'wc.validUri': 'Please provide a valid WalletConnect URI.',
     'wc.pairingStarted': 'WalletConnect pairing started.',
@@ -1086,10 +1088,12 @@ export const remainingTranslations = {
     'wc.scanQr': 'Escanear QR',
     'wc.connect': 'Conectar',
     'homeConnect.description':
-      'Pega o escanea una invitación de CashConnect, una URI de WalletConnect o una dirección de pago. Las solicitudes se aprueban desde Inicio.',
-    'homeConnect.placeholder': 'bch-cc-v1:… o wc:…',
+      'Pega o escanea una invitación de CashConnect, una URI de WalletConnect, una URI de Wizard o una dirección de pago. Las solicitudes se aprueban desde Inicio.',
+    'homeConnect.placeholder': 'bch-cc-v1:… o wc:… o wiz://…',
     'homeConnect.pasteUri':
       'Pega o escanea una URI de conexión o una dirección de pago.',
+    'homeConnect.wizardPairingStarted':
+      'Emparejamiento de WizardConnect iniciado. Aprueba las solicitudes desde Inicio.',
     'wc.noQr': 'No se detectó ningún código QR. Inténtalo de nuevo.',
     'wc.validUri': 'Introduce una URI de WalletConnect válida.',
     'wc.pairingStarted': 'Se inició la conexión de WalletConnect.',
@@ -2157,9 +2161,11 @@ export const remainingTranslations = {
     'wc.scanQr': '扫描二维码',
     'wc.connect': '连接',
     'homeConnect.description':
-      '粘贴或扫描 CashConnect 邀请、WalletConnect URI 或付款地址。请在首页批准请求。',
-    'homeConnect.placeholder': 'bch-cc-v1:… 或 wc:…',
+      '粘贴或扫描 CashConnect 邀请、WalletConnect URI、Wizard URI 或付款地址。请在首页批准请求。',
+    'homeConnect.placeholder': 'bch-cc-v1:… 或 wc:… 或 wiz://…',
     'homeConnect.pasteUri': '粘贴或扫描连接 URI 或付款地址。',
+    'homeConnect.wizardPairingStarted':
+      'WizardConnect 配对已开始。请在首页批准请求。',
     'wc.noQr': '未检测到二维码，请重试。',
     'wc.validUri': '请输入有效的 WalletConnect URI。',
     'wc.pairingStarted': 'WalletConnect 配对已开始。',
