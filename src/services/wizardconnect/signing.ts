@@ -37,7 +37,7 @@ type WalletSeedMaterial = {
   accountPath?: string;
 };
 
-function pathNameToDerivationPath(pathName: 'receive' | 'change' | 'defi'): DerivationPath {
+function pathNameToDerivationPath(pathName: string): DerivationPath {
   switch (pathName) {
     case 'receive':
       return DerivationPath.Receive;
@@ -46,7 +46,7 @@ function pathNameToDerivationPath(pathName: 'receive' | 'change' | 'defi'): Deri
     case 'defi':
       return DerivationPath.Cauldron;
     default:
-      throw new Error(`Unsupported path: ${String(pathName)}`);
+      throw new Error(`Unsupported WizardConnect path: ${pathName}`);
   }
 }
 
