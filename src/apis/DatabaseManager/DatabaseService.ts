@@ -271,6 +271,49 @@ const migrations: Array<(db: Database) => Promise<void>> = [
     // common database so desktop and Capacitor/mobile use the same model.
     createMultisigTables(db);
   },
+  async (db) => {
+    // Add token_address columns to UTXOs, addresses, and keys tables if missing.
+    // Databases created before schema.ts included these columns will lack them,
+    // causing "no such column: token_address" errors on balance refresh.
+    //
+    // Note: SQLite does not allow adding a UNIQUE column via ALTER TABLE, so
+    // keys.token_address is added without that constraint here. KeyManager
+    // already performs duplicate checks before inserts, so this is safe. Fresh
+    // databases created via createTables still get the UNIQUE constraint.
+
+    const utxoCols = new Set<string>();
+    const utxoInfo = db.prepare('PRAGMA table_info(UTXOs);');
+    while (utxoInfo.step()) {
+      const row = utxoInfo.getAsObject() as Record<string, unknown>;
+      if (typeof row.name === 'string') utxoCols.add(row.name);
+    }
+    utxoInfo.free();
+    if (!utxoCols.has('token_address')) {
+      db.run('ALTER TABLE UTXOs ADD COLUMN token_address VARCHAR(255);');
+    }
+
+    const addrCols = new Set<string>();
+    const addrInfo = db.prepare('PRAGMA table_info(addresses);');
+    while (addrInfo.step()) {
+      const row = addrInfo.getAsObject() as Record<string, unknown>;
+      if (typeof row.name === 'string') addrCols.add(row.name);
+    }
+    addrInfo.free();
+    if (!addrCols.has('token_address')) {
+      db.run('ALTER TABLE addresses ADD COLUMN token_address VARCHAR(255);');
+    }
+
+    const keyCols = new Set<string>();
+    const keyInfo = db.prepare('PRAGMA table_info(keys);');
+    while (keyInfo.step()) {
+      const row = keyInfo.getAsObject() as Record<string, unknown>;
+      if (typeof row.name === 'string') keyCols.add(row.name);
+    }
+    keyInfo.free();
+    if (!keyCols.has('token_address')) {
+      db.run('ALTER TABLE keys ADD COLUMN token_address VARCHAR(255);');
+    }
+  },
   // Add future migrations here as needed
 ];
 
