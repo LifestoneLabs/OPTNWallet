@@ -121,7 +121,7 @@ export function reviveSourceOutput(
     revived.contract = reviveContract(raw.contract);
   }
 
-  return revived as Input & Output & ContractInfo;
+  return revived as unknown as Input & Output & ContractInfo;
 }
 
 export function reviveSourceOutputs(

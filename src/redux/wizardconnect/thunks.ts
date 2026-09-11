@@ -1,8 +1,5 @@
 import { createAsyncThunk } from '@reduxjs/toolkit';
-import { Toast } from '@capacitor/toast';
 import type { RootState } from '../../state/store';
-import { selectLocale } from '../../state/slices/preferencesSlice';
-import { translate } from '../../i18n/translate';
 import { getOrCreatePersistedRelayKey } from '../../services/wizardconnect/relayKeyStore';
 
 export const wizardConnectPair = createAsyncThunk(
@@ -16,9 +13,6 @@ export const wizardConnectPair = createAsyncThunk(
       await getOrCreatePersistedRelayKey(walletId, uri);
     }
     const connectionId = manager.connect(uri);
-    await Toast.show({
-      text: translate(selectLocale(state), 'wizard.pairingStarted'),
-    });
     return {
       connectionId,
       connections: manager.getConnections(),
