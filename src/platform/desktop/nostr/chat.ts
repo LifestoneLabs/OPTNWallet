@@ -15,7 +15,10 @@ import { unwrapEvent } from 'nostr-tools/nip17';
 import { wrapManyEvents as wrapRumor } from 'nostr-tools/nip59';
 import { sha256 } from '@noble/hashes/sha2';
 import { bytesToHex, utf8ToBytes } from '@noble/hashes/utils';
-import { get as idbGet, set as idbSet } from 'idb-keyval';
+import {
+  resilientGet as idbGet,
+  resilientSet as idbSet,
+} from '../../../utils/resilientIdbKeyval';
 import SecretCryptoService from '../../../services/SecretCryptoService';
 import {
   deriveNostrIdentityFromSeed,

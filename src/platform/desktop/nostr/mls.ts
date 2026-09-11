@@ -69,7 +69,11 @@ import { unwrapEvent } from 'nostr-tools/nip17';
 import { wrapManyEvents as wrapRumor } from 'nostr-tools/nip59';
 import { bytesToHex, hexToBytes } from '@noble/hashes/utils';
 import { chacha20poly1305 } from '@noble/ciphers/chacha.js';
-import { del as idbDel, get as idbGet, set as idbSet } from 'idb-keyval';
+import {
+  resilientDel as idbDel,
+  resilientGet as idbGet,
+  resilientSet as idbSet,
+} from '../../../utils/resilientIdbKeyval';
 import SecretCryptoService from '../../../services/SecretCryptoService';
 import { deriveMlsKeys } from './mlsKeys';
 import {
