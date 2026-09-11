@@ -25,9 +25,11 @@ No Android sideload required. Run the wallet in your desktop browser:
 ```bash
 git clone https://github.com/LifestoneLabs/OPTNWallet.git
 cd OPTNWallet
-git checkout feat/wizardconnect-migrate
-# Or: git checkout cursor/wizardconnect-ux-polish-2de6
-# Or: merge PR #1 first, then checkout
+# Required for dry-run: PR #1 head (WizardConnect 0.2.x lockfile + sourceOutputs revive).
+# Bare feat/wizardconnect-migrate still locks 0.1.x — do not use that alone.
+git fetch origin pull/1/head:pr-1-wizardconnect-ux
+git checkout pr-1-wizardconnect-ux
+# Alternate: merge https://github.com/LifestoneLabs/OPTNWallet/pull/1 into feat/wizardconnect-migrate first
 
 npm install
 npm run dev
