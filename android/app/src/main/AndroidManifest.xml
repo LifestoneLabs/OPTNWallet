@@ -32,6 +32,25 @@
         <category android:name="android.intent.category.BROWSABLE" />
         <data android:scheme="bch-cc-v1" />
       </intent-filter>
+      <!-- FundMe campaign deep links: https://fundme.cash/campaigns/... -->
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+            android:scheme="https"
+            android:host="fundme.cash"
+            android:pathPrefix="/campaigns" />
+      </intent-filter>
+      <intent-filter android:autoVerify="true">
+        <action android:name="android.intent.action.VIEW" />
+        <category android:name="android.intent.category.DEFAULT" />
+        <category android:name="android.intent.category.BROWSABLE" />
+        <data
+            android:scheme="https"
+            android:host="www.fundme.cash"
+            android:pathPrefix="/campaigns" />
+      </intent-filter>
     </activity>
 
     <provider
