@@ -16,12 +16,17 @@ import {
 } from './fundmeDeepLink';
 import {
   fetchCampaignById,
+  fetchCampaignProfileById,
   type FundMeCampaignFromChain,
+  type FundMeCampaignProfile,
 } from './FundMeCampaignService';
 
 export type FundMeDeepLinkState = {
   campaignId: number | null;
   campaign: FundMeCampaignFromChain | null;
+  profile: FundMeCampaignProfile | null;
+  profileLoading: boolean;
+  profileError: string | null;
   loading: boolean;
   error: string | null;
   pledgeAmount: string;
@@ -45,6 +50,9 @@ export function useFundMeDeepLink(
   const [state, setState] = useState<FundMeDeepLinkState>({
     campaignId: null,
     campaign: null,
+    profile: null,
+    profileLoading: false,
+    profileError: null,
     loading: false,
     error: null,
     pledgeAmount: '',
@@ -54,6 +62,9 @@ export function useFundMeDeepLink(
     setState({
       campaignId: null,
       campaign: null,
+      profile: null,
+      profileLoading: false,
+      profileError: null,
       loading: false,
       error: null,
       pledgeAmount: '',
@@ -81,38 +92,69 @@ export function useFundMeDeepLink(
         ...prev,
         campaignId,
         campaign: null,
+        profile: null,
+        profileLoading: true,
+        profileError: null,
         loading: true,
         error: null,
         pledgeAmount: '',
       }));
 
-      try {
-        const campaign = await fetchCampaignById(campaignId);
-        if (!campaign) {
+      const fetchChainCampaign = async () => {
+        try {
+          const campaign = await fetchCampaignById(campaignId);
+          if (!campaign) {
+            setState((prev) => ({
+              ...prev,
+              loading: false,
+              error: `Campaign #${campaignId} not found on chain. It may have been claimed, cancelled, or does not exist.`,
+            }));
+            return;
+          }
+
+          setState((prev) => ({
+            ...prev,
+            campaign,
+            loading: false,
+            error: null,
+          }));
+        } catch (error) {
           setState((prev) => ({
             ...prev,
             loading: false,
-            error: `Campaign #${campaignId} not found on chain. It may have been claimed, cancelled, or does not exist.`,
+            error:
+              error instanceof Error
+                ? error.message
+                : 'Failed to fetch campaign from chain.',
           }));
-          return;
         }
+      };
 
-        setState((prev) => ({
-          ...prev,
-          campaign,
-          loading: false,
-          error: null,
-        }));
-      } catch (error) {
-        setState((prev) => ({
-          ...prev,
-          loading: false,
-          error:
-            error instanceof Error
-              ? error.message
-              : 'Failed to fetch campaign from chain.',
-        }));
-      }
+      const fetchProfile = async () => {
+        try {
+          const profile = await fetchCampaignProfileById(campaignId);
+          setState((prev) => ({
+            ...prev,
+            profile,
+            profileLoading: false,
+            profileError: profile
+              ? null
+              : 'Campaign profile not available from server.',
+          }));
+        } catch (error) {
+          setState((prev) => ({
+            ...prev,
+            profile: null,
+            profileLoading: false,
+            profileError:
+              error instanceof Error
+                ? error.message
+                : 'Failed to fetch campaign profile.',
+          }));
+        }
+      };
+
+      await Promise.all([fetchChainCampaign(), fetchProfile()]);
     },
     []
   );

@@ -323,6 +323,9 @@ function AppContent({ viewerOnly = false }: AppShellProps) {
           <FundMePledgeFromLinkModal
             campaignId={fundMeDeepLink.campaignId}
             campaign={fundMeDeepLink.campaign}
+            profile={fundMeDeepLink.profile}
+            profileLoading={fundMeDeepLink.profileLoading}
+            profileError={fundMeDeepLink.profileError}
             loading={fundMeDeepLink.loading}
             error={fundMeDeepLink.error}
             pledgeAmount={fundMeDeepLink.pledgeAmount}

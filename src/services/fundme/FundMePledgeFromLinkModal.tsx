@@ -2,20 +2,29 @@
  * FundMePledgeFromLinkModal.tsx
  *
  * Modal displayed when the app is opened with a FundMe campaign URL.
- * Shows on-chain campaign data and allows entering a BCH pledge amount.
+ * Shows on-chain campaign data, off-chain profile, and allows entering a BCH pledge amount.
  */
 
 import React from 'react';
 import { createPortal } from 'react-dom';
-import type { FundMeCampaignFromChain } from './FundMeCampaignService';
+import type { FundMeCampaignFromChain, FundMeCampaignProfile } from './FundMeCampaignService';
 import {
   formatBchDisplay,
   formatProgressPercent,
+  getProfileDisplayName,
+  getProfileOwner,
+  getProfileDescription,
+  getProfileBanner,
+  getProfileLogo,
+  getProfileUpdates,
 } from './FundMeCampaignService';
 
 type FundMePledgeFromLinkModalProps = {
   campaignId: number | null;
   campaign: FundMeCampaignFromChain | null;
+  profile: FundMeCampaignProfile | null;
+  profileLoading: boolean;
+  profileError: string | null;
   loading: boolean;
   error: string | null;
   pledgeAmount: string;
@@ -26,6 +35,9 @@ type FundMePledgeFromLinkModalProps = {
 const FundMePledgeFromLinkModal: React.FC<FundMePledgeFromLinkModalProps> = ({
   campaignId,
   campaign,
+  profile,
+  profileLoading,
+  profileError,
   loading,
   error,
   pledgeAmount,
@@ -42,6 +54,13 @@ const FundMePledgeFromLinkModal: React.FC<FundMePledgeFromLinkModalProps> = ({
 
   const progressWidth = Math.max(Math.min(progressPercent, 100), 2);
 
+  const displayName = getProfileDisplayName(profile, campaignId);
+  const ownerName = getProfileOwner(profile);
+  const description = getProfileDescription(profile, 300);
+  const bannerUrl = getProfileBanner(profile);
+  const logoUrl = getProfileLogo(profile);
+  const updates = getProfileUpdates(profile, 2);
+
   return createPortal(
     <div
       className="fixed inset-0 z-[1000] bg-black/70 flex items-center justify-center p-4"
@@ -52,20 +71,34 @@ const FundMePledgeFromLinkModal: React.FC<FundMePledgeFromLinkModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 border-b border-[var(--wallet-border)] bg-[var(--wallet-card-bg)] px-4 py-3">
-          <div className="flex items-center gap-3">
-            <img
-              src="/assets/images/fundme.png"
-              alt="FundMe"
-              className="h-8 w-8 object-contain"
-            />
-            <h3 className="text-lg font-semibold wallet-text-strong">
-              FundMe Campaign
-            </h3>
+          <div className="flex items-center gap-3 min-w-0">
+            {logoUrl ? (
+              <img
+                src={logoUrl}
+                alt=""
+                className="h-10 w-10 rounded-full object-cover flex-shrink-0"
+                onError={(e) => {
+                  (e.target as HTMLImageElement).style.display = 'none';
+                }}
+              />
+            ) : (
+              <img
+                src="/assets/images/fundme.png"
+                alt="FundMe"
+                className="h-8 w-8 object-contain flex-shrink-0"
+              />
+            )}
+            <div className="min-w-0">
+              <h3 className="text-base font-semibold wallet-text-strong truncate">
+                {displayName}
+              </h3>
+              <p className="text-xs wallet-muted truncate">by {ownerName}</p>
+            </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="wallet-btn-danger px-3 py-2 text-sm"
+            className="wallet-btn-danger px-3 py-2 text-sm flex-shrink-0"
           >
             Close
           </button>
@@ -89,10 +122,66 @@ const FundMePledgeFromLinkModal: React.FC<FundMePledgeFromLinkModalProps> = ({
 
           {campaign && !loading && (
             <>
+              {bannerUrl && (
+                <div
+                  className="h-24 w-full rounded-2xl bg-cover bg-center bg-no-repeat"
+                  style={{ backgroundImage: `url(${bannerUrl})` }}
+                />
+              )}
+
+              {description && (
+                <div className="rounded-2xl wallet-surface-strong border border-[var(--wallet-border)] p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.12em] wallet-muted mb-2">
+                    About
+                  </div>
+                  <p className="text-sm wallet-text-strong leading-relaxed">
+                    {description}
+                  </p>
+                  {profileLoading && (
+                    <p className="mt-2 text-xs wallet-muted italic">
+                      Loading campaign details…
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {!description && !profileLoading && profileError && (
+                <div className="rounded-2xl wallet-surface-strong border border-[var(--wallet-border)] p-3">
+                  <p className="text-xs wallet-muted text-center">
+                    {profileError}
+                  </p>
+                </div>
+              )}
+
+              {updates.length > 0 && (
+                <div className="rounded-2xl wallet-surface-strong border border-[var(--wallet-border)] p-4">
+                  <div className="text-xs font-semibold uppercase tracking-[0.12em] wallet-muted mb-2">
+                    Recent Updates
+                  </div>
+                  <div className="space-y-2">
+                    {updates.map((update, index) => (
+                      <div
+                        key={update.number ?? index}
+                        className="text-xs wallet-muted"
+                      >
+                        <span className="font-semibold">
+                          Update #{update.number ?? index + 1}:
+                        </span>{' '}
+                        {update.text
+                          ? update.text.length > 100
+                            ? `${update.text.slice(0, 100)}…`
+                            : update.text
+                          : '(No content)'}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <div className="rounded-2xl wallet-surface-strong border border-[var(--wallet-border)] p-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-semibold uppercase tracking-[0.12em] wallet-muted">
-                    Campaign #{campaign.campaignId}
+                    On-Chain Status
                   </span>
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-semibold ${
@@ -105,7 +194,7 @@ const FundMePledgeFromLinkModal: React.FC<FundMePledgeFromLinkModalProps> = ({
                   </span>
                 </div>
 
-                <div className="mt-4">
+                <div className="mt-3">
                   <div className="h-3 rounded-full bg-black/25 overflow-hidden">
                     <div
                       className="h-full rounded-full bg-[#31d89a] transition-all"
@@ -121,7 +210,7 @@ const FundMePledgeFromLinkModal: React.FC<FundMePledgeFromLinkModalProps> = ({
                   </div>
                 </div>
 
-                <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
                   <div className="rounded-xl wallet-surface border border-[var(--wallet-border)] p-3">
                     <div className="wallet-muted">End Block</div>
                     <div className="mt-1 font-semibold wallet-text-strong">
@@ -161,15 +250,10 @@ const FundMePledgeFromLinkModal: React.FC<FundMePledgeFromLinkModalProps> = ({
               </div>
 
               <div className="rounded-2xl wallet-surface-strong border border-[var(--wallet-border)] p-4">
-                <p className="text-xs wallet-muted text-center">
-                  This campaign was loaded from the CashStarter contract on
-                  chain. To complete your pledge, navigate to the FundMe app
-                  within the wallet.
-                </p>
                 <button
                   type="button"
                   disabled={campaign.status !== 'active'}
-                  className="mt-3 w-full rounded-2xl bg-[#31d89a] px-4 py-3 text-sm font-semibold text-[#08261a] disabled:bg-gray-500 disabled:cursor-not-allowed disabled:text-gray-300"
+                  className="w-full rounded-2xl bg-[#31d89a] px-4 py-3 text-sm font-semibold text-[#08261a] disabled:bg-gray-500 disabled:cursor-not-allowed disabled:text-gray-300"
                 >
                   {campaign.status === 'active'
                     ? 'Open in FundMe App'
