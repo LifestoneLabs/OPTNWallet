@@ -55,6 +55,10 @@ import {
 } from './useAppLifecycle';
 import UtxoNotificationCenter from '../components/notifications/UtxoNotificationCenter';
 import ServerNotificationCenter from '../components/notifications/ServerNotificationCenter';
+import {
+  useFundMeDeepLink,
+  FundMePledgeFromLinkModal,
+} from '../services/fundme';
 import MarketplaceAppHost from '../pages/apps/MarketplaceAppHost';
 import CreateWalletPage from '../pages/onboarding/CreateWalletPage';
 import ImportWalletPage from '../pages/onboarding/ImportWalletPage';
@@ -139,6 +143,11 @@ function AppContent({ viewerOnly = false }: AppShellProps) {
   useWizardConnectSessionWatch(
     !viewerOnly && walletNetworkReady ? walletId : null,
     dispatch
+  );
+
+  const fundMeDeepLink = useFundMeDeepLink(
+    viewerOnly ? null : walletId,
+    !viewerOnly
   );
 
   return (
@@ -309,6 +318,18 @@ function AppContent({ viewerOnly = false }: AppShellProps) {
         {/* 🔔 Always-on in-app UTXO popup (only when wallet exists) */}
         {hasWallet && <UtxoNotificationCenter />}
         {hasWallet && <ServerNotificationCenter />}
+        {/* FundMe campaign deep link modal */}
+        {!viewerOnly && (
+          <FundMePledgeFromLinkModal
+            campaignId={fundMeDeepLink.campaignId}
+            campaign={fundMeDeepLink.campaign}
+            loading={fundMeDeepLink.loading}
+            error={fundMeDeepLink.error}
+            pledgeAmount={fundMeDeepLink.pledgeAmount}
+            onPledgeAmountChange={fundMeDeepLink.setPledgeAmount}
+            onClose={fundMeDeepLink.clearCampaign}
+          />
+        )}
       </main>
     </div>
   );
