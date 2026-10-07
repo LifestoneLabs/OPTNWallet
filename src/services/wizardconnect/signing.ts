@@ -75,6 +75,39 @@ export async function signWizardConnectTransaction(
     throw new Error('WizardConnect request is missing source outputs');
   }
 
+  // Force Uint8Array at encode boundary (revive + coerce). encodeTokenPrefix
+  // does category.slice().reverse() and throws if category is still a hex string.
+  const forceTokenBins = <T extends { category?: unknown; nft?: { commitment?: unknown } }>(
+    token: T | undefined
+  ): T | undefined => {
+    if (!token) return token;
+    const next: T = {
+      ...token,
+      category: ensureUint8Array(token.category),
+    };
+    if (token.nft) {
+      next.nft = {
+        ...token.nft,
+        commitment:
+          token.nft.commitment === undefined || token.nft.commitment === null
+            ? token.nft.commitment
+            : ensureUint8Array(token.nft.commitment),
+      };
+    }
+    if (!(next.category instanceof Uint8Array)) {
+      throw new Error(
+        `token.category must be Uint8Array before encodeTokenPrefix (got ${typeof next.category})`
+      );
+    }
+    return next;
+  };
+  txDetails.outputs?.forEach((output: { token?: { category?: unknown } }) => {
+    if (output.token) output.token = forceTokenBins(output.token);
+  });
+  sourceOutputs.forEach((utxo) => {
+    if (utxo.token) utxo.token = forceTokenBins(utxo.token) as typeof utxo.token;
+  });
+
   const template = importWalletTemplate(walletTemplateP2pkhNonHd);
   if (typeof template === 'string') {
     throw new Error(template);
