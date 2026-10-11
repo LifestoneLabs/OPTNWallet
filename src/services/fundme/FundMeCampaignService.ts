@@ -7,12 +7,18 @@
  */
 
 import ElectrumService from '../ElectrumService';
-import { AddressCashStarter, MasterCategoryID } from '../../pages/apps/fundme/values';
+import {
+  AddressCashStarter,
+  MasterCategoryID,
+} from '../../pages/apps/fundme/values';
 import {
   fetchCampaignProfile,
   stripHtmlTags,
   truncateText,
   isValidImageUrl,
+  resolveCampaignImageUrl,
+  resolveProfileBannerUrl,
+  resolveProfileLogoUrl,
   type FundMeCampaignProfile,
   type FundMeProfileUpdate,
 } from './fundmeApiClient';
@@ -158,9 +164,7 @@ export function getProfileDisplayName(
   return profile?.name?.trim() || `Campaign #${campaignId}`;
 }
 
-export function getProfileOwner(
-  profile: FundMeCampaignProfile | null
-): string {
+export function getProfileOwner(profile: FundMeCampaignProfile | null): string {
   return profile?.owner?.trim() || 'FundMe';
 }
 
@@ -177,15 +181,13 @@ export function getProfileDescription(
 export function getProfileBanner(
   profile: FundMeCampaignProfile | null
 ): string | null {
-  const banner = profile?.banner;
-  return isValidImageUrl(banner) ? banner! : null;
+  return resolveProfileBannerUrl(profile);
 }
 
 export function getProfileLogo(
   profile: FundMeCampaignProfile | null
 ): string | null {
-  const logo = profile?.logo;
-  return isValidImageUrl(logo) ? logo! : null;
+  return resolveProfileLogoUrl(profile);
 }
 
 export function getProfileUpdates(
@@ -200,4 +202,11 @@ export function getProfileUpdates(
   }));
 }
 
-export { stripHtmlTags, truncateText, isValidImageUrl };
+export {
+  stripHtmlTags,
+  truncateText,
+  isValidImageUrl,
+  resolveCampaignImageUrl,
+  resolveProfileBannerUrl,
+  resolveProfileLogoUrl,
+};

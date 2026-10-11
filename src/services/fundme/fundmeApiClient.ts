@@ -14,6 +14,15 @@ export type FundMeProfileUpdate = {
   text?: string;
 };
 
+export type FundMeCampaignImageSet = {
+  logo?: string;
+  banner?: string;
+  card?: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  cardUrl?: string;
+};
+
 export type FundMeCampaignProfile = {
   id?: number | string;
   name?: string;
@@ -21,11 +30,122 @@ export type FundMeCampaignProfile = {
   description?: string;
   logo?: string;
   banner?: string;
+  logoUrl?: string;
+  bannerUrl?: string;
+  cardUrl?: string;
+  images?: FundMeCampaignImageSet;
   ownersAddress?: string;
   updates?: FundMeProfileUpdate[];
   isComplete?: boolean;
   status?: string;
 };
+
+export const FUNDME_CAMPAIGN_IMAGE_PATH =
+  /^\/campaign-img\/[A-Za-z0-9_-]+\/(logo|banner|card|desc)\.[a-f0-9]{12}\.webp$/;
+
+const DEFAULT_FUNDME_ORIGIN = 'https://fundme.cash';
+
+function normalizeFundMeOrigin(baseUrl: string): string {
+  return baseUrl.trim().replace(/\/+$/, '');
+}
+
+function originOf(url: string): string | null {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
+function allowedImageOrigins(baseUrl: string): Set<string> {
+  const origins = new Set<string>();
+  const configured = originOf(normalizeFundMeOrigin(baseUrl));
+  if (configured) origins.add(configured);
+  origins.add(DEFAULT_FUNDME_ORIGIN);
+  return origins;
+}
+
+/**
+ * Resolve a FundMe campaign image value to an absolute https URL.
+ *
+ * Accepts only:
+ * - relative hashed WebP paths (`/campaign-img/<id>/(logo|banner|card|desc).<12hex>.webp`)
+ * - absolute URLs on the FundMe origin (or the configured API base) whose
+ *   pathname matches that same pattern
+ *
+ * Rejects data URIs, other hosts, path traversal, and non-WebP filenames.
+ */
+export function resolveCampaignImageUrl(
+  value: string | null | undefined,
+  baseUrl: string = getFundMeApiBaseUrl()
+): string | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+
+  const origin = normalizeFundMeOrigin(baseUrl) || DEFAULT_FUNDME_ORIGIN;
+
+  if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
+    if (!FUNDME_CAMPAIGN_IMAGE_PATH.test(trimmed)) return null;
+    return `${origin}${trimmed}`;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return null;
+  }
+
+  if (parsed.protocol !== 'https:') return null;
+  if (parsed.username || parsed.password) return null;
+  if (parsed.search || parsed.hash) return null;
+  if (!allowedImageOrigins(origin).has(parsed.origin)) return null;
+  if (!FUNDME_CAMPAIGN_IMAGE_PATH.test(parsed.pathname)) return null;
+
+  return `${parsed.origin}${parsed.pathname}`;
+}
+
+function firstResolvedCampaignImage(
+  candidates: Array<string | null | undefined>,
+  baseUrl?: string
+): string | null {
+  for (const candidate of candidates) {
+    const resolved = resolveCampaignImageUrl(candidate, baseUrl);
+    if (resolved) return resolved;
+  }
+  return null;
+}
+
+export function resolveProfileBannerUrl(
+  profile: FundMeCampaignProfile | null | undefined,
+  baseUrl?: string
+): string | null {
+  const images = profile?.images;
+  return firstResolvedCampaignImage(
+    [
+      profile?.bannerUrl,
+      images?.bannerUrl,
+      images?.banner,
+      profile?.cardUrl,
+      images?.cardUrl,
+      images?.card,
+      profile?.banner,
+    ],
+    baseUrl
+  );
+}
+
+export function resolveProfileLogoUrl(
+  profile: FundMeCampaignProfile | null | undefined,
+  baseUrl?: string
+): string | null {
+  const images = profile?.images;
+  return firstResolvedCampaignImage(
+    [profile?.logoUrl, images?.logoUrl, images?.logo, profile?.logo],
+    baseUrl
+  );
+}
 
 export type FundMeApiError = {
   error: string;
@@ -133,9 +253,5 @@ export function truncateText(text: string, maxLength: number): string {
 }
 
 export function isValidImageUrl(url: string | null | undefined): boolean {
-  if (!url) return false;
-  if (url.startsWith('data:image/')) return true;
-  if (/^https?:\/\/.+\.(png|jpe?g|gif|webp|svg)(\?.*)?$/i.test(url)) return true;
-  if (/^https?:\/\//.test(url)) return true;
-  return false;
+  return resolveCampaignImageUrl(url) !== null;
 }

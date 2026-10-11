@@ -23,16 +23,16 @@ export {
   stripHtmlTags,
   truncateText,
   isValidImageUrl,
+  resolveCampaignImageUrl,
+  resolveProfileBannerUrl,
+  resolveProfileLogoUrl,
   type FundMeCampaignFromChain,
   type FundMeCampaignProfile,
   type FundMeProfileUpdate,
   type FundMeProfileState,
 } from './FundMeCampaignService';
 
-export {
-  fetchCampaignProfile,
-  type FundMeApiError,
-} from './fundmeApiClient';
+export { fetchCampaignProfile, type FundMeApiError } from './fundmeApiClient';
 
 export {
   useFundMeDeepLink,
