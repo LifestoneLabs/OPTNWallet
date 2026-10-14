@@ -729,6 +729,7 @@ const Transaction: React.FC = () => {
             currentNetwork={currentNetwork}
             broadcastState={broadcastState}
             closePopups={closePopups}
+            selectedUtxos={selectedUtxos}
           />
 
           <BurnConfirmDialog
