@@ -1,7 +1,11 @@
 import { HashType, SignatureTemplate } from 'cashscript';
 import { Dispatch, SetStateAction, useCallback } from 'react';
 import ContractManager from '../../apis/ContractManager/ContractManager';
-import { setInputValues, setSelectedFunction, resetContract } from '../../state/slices/contractSlice';
+import {
+  setInputValues,
+  setSelectedFunction,
+  resetContract,
+} from '../../state/slices/contractSlice';
 import { removeTxOutput } from '../../state/slices/transactionBuilderSlice';
 import { AppDispatch } from '../../state/store';
 import TransactionService, {
@@ -12,6 +16,10 @@ import KeyService from '../../services/KeyService';
 import { UTXO } from '../../types/types';
 import type { TokenCapability } from '../../services/cashtokens';
 import { toErrorMessage } from '../../utils/errorHandling';
+import {
+  isTokenCategorySelected,
+  toAtomicAmount,
+} from '../../utils/detectTransactionBurns';
 
 export type ContractAbiInput = { name: string; type: string };
 
@@ -31,7 +39,8 @@ type UseTransactionHandlersParams = {
   nftCommitment?: string;
   handleSendTransaction: (
     rawTx: string,
-    setTransactionId: Dispatch<SetStateAction<string>>
+    setTransactionId: Dispatch<SetStateAction<string>>,
+    options?: { confirmBurns?: boolean }
   ) => Promise<BroadcastResult>;
   txSetters: {
     setRawTX: (value: string) => void;
@@ -161,9 +170,8 @@ export function useTransactionHandlers({
       } else {
         if (utxo.abi) {
           const contractManager = ContractManager();
-          const constructorArgs = await contractManager.getContractInstanceByAddress(
-            utxo.address
-          );
+          const constructorArgs =
+            await contractManager.getContractInstanceByAddress(utxo.address);
           setShowPopup(true);
           setTempUtxos(utxo);
           setCurrentContractABI(utxo.abi);
@@ -213,6 +221,21 @@ export function useTransactionHandlers({
     if (!recipientAddress || (!transferAmount && !tokenAmount)) {
       setErrorMessage('Recipient address and an amount are required');
       return;
+    }
+
+    if (isTokenCategorySelected(selectedTokenCategory)) {
+      const isNftOutput =
+        Boolean(nftCapability !== undefined && nftCommitment !== undefined) ||
+        selectedUtxos.some(
+          (utxo) =>
+            utxo.token?.category === selectedTokenCategory && utxo.token.nft
+        );
+      if (!isNftOutput && toAtomicAmount(tokenAmount) === 0n) {
+        setErrorMessage(
+          'Fungible token outputs require a token amount greater than 0.'
+        );
+        return;
+      }
     }
 
     if (rawTX !== '' && txOutputsLength !== 0) {
@@ -303,7 +326,10 @@ export function useTransactionHandlers({
       abiInputs: ContractAbiInput[]
     ) => {
       if (typeof inputs !== 'object' || Array.isArray(inputs)) {
-        console.error("Error: 'inputs' is not a valid object. Received:", inputs);
+        console.error(
+          "Error: 'inputs' is not a valid object. Received:",
+          inputs
+        );
         return;
       }
 
@@ -320,8 +346,12 @@ export function useTransactionHandlers({
               ? raw.slice('sigaddr:'.length)
               : raw;
 
-            const pk = await KeyService.fetchAddressPrivateKey(address, 'spend');
-            if (!pk) throw new Error(`Missing private key for address: ${address}`);
+            const pk = await KeyService.fetchAddressPrivateKey(
+              address,
+              'spend'
+            );
+            if (!pk)
+              throw new Error(`Missing private key for address: ${address}`);
             return new SignatureTemplate(pk, HashType.SIGHASH_ALL);
           }
 
@@ -343,7 +373,14 @@ export function useTransactionHandlers({
 
       setShowPopup(false);
     },
-    [dispatch, selectedUtxos, setErrorMessage, setSelectedUtxos, setShowPopup, tempUtxos]
+    [
+      dispatch,
+      selectedUtxos,
+      setErrorMessage,
+      setSelectedUtxos,
+      setShowPopup,
+      tempUtxos,
+    ]
   );
 
   return {
