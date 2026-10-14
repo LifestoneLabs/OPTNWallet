@@ -2080,6 +2080,7 @@ export const localeOverrides = {
     'builder.close': 'إغلاق',
     'builder.outpoint': 'Outpoint',
     'builder.minerFee': 'رسوم الشبكة',
+    'builder.feeRateSatsPerByte': '{rate} سات/بايت',
     'builder.minerFeeToMiners': 'مدفوعة للمعدّنين',
     'builder.showDetails': 'عرض التفاصيل',
     'builder.hideDetails': 'إخفاء التفاصيل',

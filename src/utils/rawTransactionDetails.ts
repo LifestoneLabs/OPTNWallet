@@ -1,11 +1,13 @@
 import type { UTXO } from '../types/types';
-import { toAtomicAmount } from './detectTransactionBurns';
+import { utxoSats } from './detectTransactionBurns';
 import {
   resolveTokenPresentation,
   tokenPresentationFallbackFromBcmr,
   type TokenPresentation,
 } from './tokenPresentation';
 import type { BcmrTokenMetadataState } from '../types/bcmr';
+
+export { utxoSats };
 
 export const SATS_PER_BCH = 100_000_000n;
 
@@ -32,13 +34,6 @@ export type RawTxIoView = {
   token: RawTxTokenView | null;
 };
 
-export function utxoSats(
-  utxo: Pick<UTXO, 'satoshis' | 'value' | 'amount'>
-): bigint {
-  const src = utxo as UTXO & { satoshis?: unknown };
-  return toAtomicAmount(src.satoshis ?? src.value ?? src.amount ?? 0);
-}
-
 export function computeTransactionFeeSats(
   inputSats: readonly bigint[],
   outputSats: readonly bigint[]
@@ -46,6 +41,18 @@ export function computeTransactionFeeSats(
   const incoming = inputSats.reduce((sum, value) => sum + value, 0n);
   const outgoing = outputSats.reduce((sum, value) => sum + value, 0n);
   return incoming - outgoing;
+}
+
+export function formatFeeRateSatsPerByte(
+  feeSats: bigint,
+  serializedBytes: number
+): string {
+  if (!Number.isFinite(serializedBytes) || serializedBytes <= 0) {
+    return '0.00';
+  }
+  const rate = Number(feeSats) / serializedBytes;
+  if (!Number.isFinite(rate)) return '0.00';
+  return rate.toFixed(2);
 }
 
 export function formatSatsAsBch(sats: bigint): string {
@@ -56,26 +63,46 @@ export function formatSatsAsBch(sats: bigint): string {
   return `${sign}${whole.toString()}.${frac}`;
 }
 
-export function formatOutpoint(txid: string, vout: number): string {
+function outpointIndexOf(value: unknown): number | null {
+  if (typeof value === 'bigint') {
+    if (value > BigInt(Number.MAX_SAFE_INTEGER) || value < 0n) return null;
+    return Number(value);
+  }
+  const numeric =
+    typeof value === 'number'
+      ? value
+      : typeof value === 'string' && value.trim()
+        ? Number(value)
+        : NaN;
+  if (!Number.isFinite(numeric)) return null;
+  return Math.trunc(numeric);
+}
+
+export function formatOutpoint(txid: string, vout: number | bigint): string {
+  const index = outpointIndexOf(vout) ?? 0;
   return `${String(txid ?? '')
     .trim()
-    .toLowerCase()}:${vout}`;
+    .toLowerCase()}:${index}`;
 }
 
 export function matchUtxoByOutpoint(
   utxos: UTXO[],
   txid: string,
-  vout: number
+  vout: number | bigint
 ): UTXO | undefined {
   const normalized = String(txid ?? '')
     .trim()
     .toLowerCase();
-  return utxos.find(
-    (utxo) =>
-      String(utxo.tx_hash ?? '')
-        .trim()
-        .toLowerCase() === normalized && utxo.tx_pos === vout
-  );
+  const index = outpointIndexOf(vout);
+  if (index === null) return undefined;
+  return utxos.find((utxo) => {
+    const hash = String(
+      utxo.tx_hash ?? (utxo as UTXO & { txid?: unknown }).txid ?? ''
+    )
+      .trim()
+      .toLowerCase();
+    return hash === normalized && outpointIndexOf(utxo.tx_pos) === index;
+  });
 }
 
 export function bcmrForCategory(utxos: UTXO[], category: string): unknown {

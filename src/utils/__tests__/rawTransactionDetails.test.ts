@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { UTXO } from '../../types/types';
+import { detectTransactionBurns } from '../detectTransactionBurns';
 import {
   bcmrForCategory,
   computeTransactionFeeSats,
+  formatFeeRateSatsPerByte,
   formatOutpoint,
   formatSatsAsBch,
   hasDisplayableBcmrIdentity,
@@ -73,5 +75,102 @@ describe('rawTransactionDetails fee and formatting', () => {
   it('labels an empty NFT commitment as none', () => {
     expect(nftCommitmentLabel('')).toBe('none');
     expect(nftCommitmentLabel('cafe')).toBe('cafe');
+  });
+
+  it('formats fee rate as sats/byte with 2 decimals', () => {
+    expect(formatFeeRateSatsPerByte(250n, 200)).toBe('1.25');
+    expect(formatFeeRateSatsPerByte(3n, 2)).toBe('1.50');
+    expect(formatFeeRateSatsPerByte(0n, 200)).toBe('0.00');
+    expect(formatFeeRateSatsPerByte(100n, 0)).toBe('0.00');
+  });
+
+  it('reads BCH sats from a token+BCH UTXO without using token.amount', () => {
+    const tokenPlusBch = {
+      address: 'bitcoincash:qsource',
+      height: 1,
+      tx_hash: 'aa'.repeat(32),
+      tx_pos: 0,
+      satoshis: 0n,
+      value: 0,
+      amount: 0,
+      valueSatoshis: 5460n,
+      token: {
+        category:
+          'ad95860f11111111111111111111111111111111111111111111111111115753',
+        amount: 1n,
+      },
+    } as UTXO & { valueSatoshis: bigint };
+
+    expect(utxoSats(tokenPlusBch)).toBe(5460n);
+    expect(utxoSats({ ...tokenPlusBch, value: 5460, valueSatoshis: 0n })).toBe(
+      5460n
+    );
+    expect(
+      utxoSats({
+        ...tokenPlusBch,
+        satoshis: undefined,
+        value: undefined,
+        amount: 5460,
+        valueSatoshis: undefined,
+      })
+    ).toBe(5460n);
+    expect(utxoSats(tokenPlusBch)).not.toBe(1n);
+
+    const fee = computeTransactionFeeSats(
+      [utxoSats(tokenPlusBch)],
+      [1000n]
+    );
+    expect(fee).toBe(4460n);
+  });
+
+  it('matches token UTXO outpoints when tx_pos is a string or bigint index', () => {
+    const utxo: UTXO = {
+      address: 'bitcoincash:qsource',
+      height: 1,
+      tx_hash: 'cc'.repeat(32),
+      tx_pos: '0' as unknown as number,
+      value: 5460,
+      token: {
+        category:
+          'ad95860f11111111111111111111111111111111111111111111111111115753',
+        amount: 1n,
+      },
+    };
+    expect(matchUtxoByOutpoint([utxo], 'cc'.repeat(32), 0)).toBe(utxo);
+    expect(matchUtxoByOutpoint([utxo], 'cc'.repeat(32), 0n)).toBe(utxo);
+  });
+});
+
+describe('token+BCH UTXO burn fee uses real satoshis', () => {
+  it('does not treat a token+BCH input as 0 sats when satoshis is 0n', () => {
+    const category =
+      'ad95860f11111111111111111111111111111111111111111111111111115753';
+    const report = detectTransactionBurns({
+      inputs: [
+        {
+          address: 'bitcoincash:qsource',
+          height: 800000,
+          tx_hash: 'aa'.repeat(32),
+          tx_pos: 0,
+          satoshis: 0n,
+          value: 20_000,
+          token: { category, amount: 1n },
+        },
+      ],
+      outputs: [
+        {
+          recipientAddress: 'bitcoincash:qrecipient',
+          amount: 1000,
+          token: { category, amount: 1n },
+        },
+      ],
+      bytecodeSize: 200,
+    });
+
+    expect(report.fungibleTokens).toEqual([]);
+    // 20_000 - 1_000 = 19_000, well above 10× the 200-byte relay fee.
+    // Reading satoshis: 0n via ?? would yield feePaid < 0 and miss this burn.
+    expect(report.bch).toEqual([{ kind: 'excess_fee', amount: 19_000n }]);
+    expect(utxoSats({ satoshis: 0n, value: 20_000, amount: 0 })).toBe(20_000n);
   });
 });

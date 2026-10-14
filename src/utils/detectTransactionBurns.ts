@@ -69,15 +69,38 @@ export function toAtomicAmount(value: unknown): bigint {
   return 0n;
 }
 
+/**
+ * BCH satoshis locked in a UTXO. Token.amount is fungible-token units, not
+ * BCH, so it is never consulted. 0 / 0n are skipped because `??` would
+ * otherwise treat a placeholder satoshis/value field as the real amount and
+ * hide valueSatoshis / value / amount.
+ */
+export function utxoSats(
+  utxo: Pick<UTXO, 'satoshis' | 'value' | 'amount'>
+): bigint {
+  const src = utxo as UTXO & {
+    satoshis?: unknown;
+    valueSatoshis?: unknown;
+    value_satoshis?: unknown;
+  };
+  const candidates = [
+    src.satoshis,
+    src.valueSatoshis,
+    src.value_satoshis,
+    src.value,
+    src.amount,
+  ];
+  for (const candidate of candidates) {
+    const sats = toAtomicAmount(candidate);
+    if (sats > 0n) return sats;
+  }
+  return 0n;
+}
+
 export function isTokenCategorySelected(
   category: string | undefined | null
 ): boolean {
   return Boolean(category) && category !== 'none';
-}
-
-function inputSats(input: UTXO): bigint {
-  const src = input as UTXO & { satoshis?: unknown };
-  return toAtomicAmount(src.satoshis ?? src.value ?? src.amount ?? 0);
 }
 
 function outputSats(output: TransactionOutput): bigint {
@@ -213,10 +236,7 @@ export function detectTransactionBurns({
         : null;
 
   if (size !== null && size > 0) {
-    const inputTotal = inputs.reduce(
-      (sum, input) => sum + inputSats(input),
-      0n
-    );
+    const inputTotal = inputs.reduce((sum, input) => sum + utxoSats(input), 0n);
     const feePaid = inputTotal - spendableOutputSats - opReturnSats;
     if (feePaid > 0n) {
       const requiredFee = requiredFeeForBytes(size);

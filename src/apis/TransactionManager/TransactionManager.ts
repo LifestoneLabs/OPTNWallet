@@ -31,6 +31,7 @@ import OutboundTransactionTracker from '../../services/OutboundTransactionTracke
 import {
   isTokenCategorySelected,
   toAtomicAmount,
+  utxoSats,
 } from '../../utils/detectTransactionBurns';
 
 function deriveTxidFromRawTx(rawTX: string): string | null {
@@ -452,24 +453,6 @@ export default function TransactionManager() {
   // ----------------------------
   // Helpers (local, no new files)
   // ----------------------------
-
-  function utxoSats(utxo: UTXO): bigint {
-    const src = utxo as UTXO & { satoshis?: unknown };
-    const raw: unknown = src.satoshis ?? src.value ?? src.amount ?? 0;
-
-    if (typeof raw === 'bigint') return raw;
-    if (typeof raw === 'number') {
-      return BigInt(Number.isFinite(raw) ? Math.trunc(raw) : 0);
-    }
-    if (typeof raw === 'string') {
-      try {
-        return BigInt(raw.trim() || '0');
-      } catch {
-        return 0n;
-      }
-    }
-    return 0n;
-  }
 
   function outputSats(o: TransactionOutput): bigint {
     if ('opReturn' in o && o.opReturn !== undefined) return 0n;

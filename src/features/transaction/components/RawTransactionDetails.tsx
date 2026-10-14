@@ -13,9 +13,11 @@ import type { UTXO } from '../../../types/types';
 import { PREFIX } from '../../../utils/constants';
 import { ensureUint8Array } from '../../../utils/binary';
 import { deriveTrackedTxid } from '../../../services/OutboundTransactionTracker';
+import { txBytesFromHex } from '../../../apis/TransactionManager/feePolicy';
 import {
   bcmrForCategory,
   computeTransactionFeeSats,
+  formatFeeRateSatsPerByte,
   formatOutpoint,
   formatSatsAsBch,
   matchUtxoByOutpoint,
@@ -186,6 +188,7 @@ const RawTransactionDetails: React.FC<RawTransactionDetailsProps> = ({
     io.inputs.map((item) => item.sats),
     io.outputs.map((item) => item.sats)
   );
+  const feeRate = formatFeeRateSatsPerByte(feeSats, txBytesFromHex(rawTX));
 
   if (!decodedTx) {
     return (
@@ -245,6 +248,9 @@ const RawTransactionDetails: React.FC<RawTransactionDetailsProps> = ({
         <p className="text-sm wallet-text-strong">
           {formatSatsAsBch(feeSats)} {t('txDetails.bch')} ({feeSats.toString()}{' '}
           {t('txSummary.sats')})
+        </p>
+        <p className="text-sm wallet-text-strong">
+          {t('builder.feeRateSatsPerByte', { rate: feeRate })}
         </p>
         <p className="text-xs wallet-muted">{t('builder.minerFeeToMiners')}</p>
       </section>

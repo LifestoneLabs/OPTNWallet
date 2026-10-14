@@ -271,6 +271,44 @@ const RegularTxView: React.FC<RegularTxViewProps> = ({
         </div>
       </div>
 
+      <div className="mb-2">
+        <label className="block font-medium mb-1">
+          {t('builder.tokenCategory')}
+        </label>
+        <select
+          value={selectedTokenCategory}
+          onChange={(e) => setSelectedTokenCategory(e.target.value)}
+          className="wallet-input w-full break-words whitespace-normal"
+        >
+          <option value="none">{t('builder.none')}</option>
+          {categoriesFromSelected.map((category) => {
+            const presentation = getTokenPresentation(category);
+            return (
+              <option key={category} value={category}>
+                {presentation.primaryLabel}
+              </option>
+            );
+          })}
+        </select>
+
+        {selectedTokenCategory !== 'none' && (
+          <div className="mt-2">
+            <TokenIdentityBadge
+              presentation={getTokenPresentation(selectedTokenCategory)}
+              detail={
+                <span className="text-sm font-medium wallet-muted">
+                  {isNft ? 'NFT' : 'FT'}
+                </span>
+              }
+              avatarClassName="h-6 w-6 rounded"
+              primaryClassName="text-sm"
+              secondaryClassName="text-[11px]"
+              showStatus
+            />
+          </div>
+        )}
+      </div>
+
       {selectedTokenCategory && selectedTokenCategory !== 'none' && (
         <div className="mb-4">
           <div className="flex items-center justify-between mb-1">
@@ -338,44 +376,6 @@ const RegularTxView: React.FC<RegularTxViewProps> = ({
           )}
         </div>
       )}
-
-      <div className="mb-2">
-        <label className="block font-medium mb-1">
-          {t('builder.tokenCategory')}
-        </label>
-        <select
-          value={selectedTokenCategory}
-          onChange={(e) => setSelectedTokenCategory(e.target.value)}
-          className="wallet-input w-full break-words whitespace-normal"
-        >
-          <option value="none">{t('builder.none')}</option>
-          {categoriesFromSelected.map((category) => {
-            const presentation = getTokenPresentation(category);
-            return (
-              <option key={category} value={category}>
-                {presentation.primaryLabel}
-              </option>
-            );
-          })}
-        </select>
-
-        {selectedTokenCategory !== 'none' && (
-          <div className="mt-2">
-            <TokenIdentityBadge
-              presentation={getTokenPresentation(selectedTokenCategory)}
-              detail={
-                <span className="text-sm font-medium wallet-muted">
-                  {isNft ? 'NFT' : 'FT'}
-                </span>
-              }
-              avatarClassName="h-6 w-6 rounded"
-              primaryClassName="text-sm"
-              secondaryClassName="text-[11px]"
-              showStatus
-            />
-          </div>
-        )}
-      </div>
 
       <div className="flex flex-col items-end justific-end mt-4">
         <button onClick={onAddOutput} className="wallet-btn-primary">
