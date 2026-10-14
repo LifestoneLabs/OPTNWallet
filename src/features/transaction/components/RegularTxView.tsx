@@ -7,6 +7,7 @@ import { DUST, SATSINBITCOIN } from '../../../utils/constants';
 import {
   formatAtomicTokenAmount,
   resolveTokenPresentation,
+  tokenPresentationFallbackFromBcmr,
 } from '../../../utils/tokenPresentation';
 import type { TokenPresentationFallback } from '../../../utils/tokenPresentation';
 import type { BcmrTokenMetadataState } from '../../../types/bcmr';
@@ -104,14 +105,11 @@ const RegularTxView: React.FC<RegularTxViewProps> = ({
 
     for (const utxo of selectedUtxos) {
       const category = utxo.token?.category;
-      const bcmr = utxo.token?.BcmrTokenMetadata;
-      if (!category || !bcmr || byCategory.has(category)) continue;
-      byCategory.set(category, {
-        name: bcmr.name,
-        symbol: bcmr.token.symbol,
-        decimals: bcmr.token.decimals,
-        iconUri: bcmr.uris?.icon ?? null,
-      });
+      const fallback = tokenPresentationFallbackFromBcmr(
+        utxo.token?.BcmrTokenMetadata
+      );
+      if (!category || !fallback || byCategory.has(category)) continue;
+      byCategory.set(category, fallback);
     }
 
     return byCategory;

@@ -211,4 +211,58 @@ describe('RegularTxView', () => {
       'Enter a fungible token amount greater than 0.'
     );
   });
+
+  it.each([
+    { label: 'undefined BCMR metadata', metadata: undefined },
+    { label: 'empty BCMR object without uris', metadata: {} },
+  ])('renders the token selector when the UTXO has $label', ({ metadata }) => {
+    expect(() =>
+      render(
+        <I18nContext.Provider
+          value={{
+            locale: 'en',
+            setLocale: () => undefined,
+            t: (key) => translations.en[key],
+          }}
+        >
+          <RegularTxView
+            recipientAddress="bitcoincash:qpm2qsznhks23z7629mms6s4cwef74vcwvy22gdx6a"
+            setRecipientAddress={() => undefined}
+            transferAmount={1000}
+            setTransferAmount={() => undefined}
+            categoriesFromSelected={[SAMPLE_TOKEN_CATEGORY]}
+            tokenAmount={0n}
+            setTokenAmount={() => undefined}
+            selectedTokenCategory={SAMPLE_TOKEN_CATEGORY}
+            setSelectedTokenCategory={() => undefined}
+            tokenMetadata={{}}
+            selectedUtxos={[
+              {
+                address:
+                  'bitcoincash:qpm2qsznhks23z7629mms6s4cwef74vcwvy22gdx6a',
+                height: 100,
+                tx_hash: '11'.repeat(32),
+                tx_pos: 0,
+                value: 1000,
+                token: {
+                  category: SAMPLE_TOKEN_CATEGORY,
+                  amount: 25n,
+                  ...(metadata === undefined
+                    ? {}
+                    : { BcmrTokenMetadata: metadata }),
+                },
+              } as UTXO,
+            ]}
+            scanBarcode={async () => undefined}
+            handleAddOutput={async () => undefined}
+            txOutputs={[]}
+          />
+        </I18nContext.Provider>
+      )
+    ).not.toThrow();
+
+    expect(screen.getByRole('combobox')).toHaveValue(SAMPLE_TOKEN_CATEGORY);
+    expect(screen.getAllByText('samp...gory').length).toBeGreaterThan(0);
+    expect(screen.getByText('FT')).toBeInTheDocument();
+  });
 });

@@ -54,6 +54,42 @@ export function shortTokenCategory(category: string): string {
   return shortenHash(String(category ?? '').trim(), 4, 4);
 }
 
+/**
+ * Read BCMR identity fields without assuming `token` or `uris` exist.
+ * Missing metadata, `{}`, and snapshots without `uris` all become a
+ * placeholder fallback (no icon, decimals 0). Callers should still use
+ * `resolveTokenPresentation`, which shows a short category id as the name.
+ */
+export function tokenPresentationFallbackFromBcmr(
+  bcmr: unknown
+): TokenPresentationFallback | null {
+  if (bcmr == null || typeof bcmr !== 'object') return null;
+
+  const record = bcmr as {
+    name?: unknown;
+    token?: { symbol?: unknown; decimals?: unknown } | null;
+    uris?: { icon?: unknown } | null;
+  };
+
+  const name = typeof record.name === 'string' ? record.name.trim() : '';
+  const symbol =
+    typeof record.token?.symbol === 'string' ? record.token.symbol.trim() : '';
+  const decimalsRaw = record.token?.decimals;
+  const decimals =
+    typeof decimalsRaw === 'number' && Number.isFinite(decimalsRaw)
+      ? Math.max(0, Math.trunc(decimalsRaw))
+      : 0;
+  const iconUri =
+    typeof record.uris?.icon === 'string' ? record.uris.icon.trim() : '';
+
+  return {
+    name: name || null,
+    symbol: symbol || null,
+    decimals,
+    iconUri: iconUri || null,
+  };
+}
+
 export function formatAtomicTokenAmount(
   amount: bigint | number | string,
   decimals = 0
@@ -79,7 +115,9 @@ export function formatAtomicTokenAmount(
   if (!/^\d+$/.test(unsigned)) return '0';
 
   if (unsigned.length <= normalizedDecimals) {
-    const fractional = unsigned.padStart(normalizedDecimals, '0').replace(/0+$/, '');
+    const fractional = unsigned
+      .padStart(normalizedDecimals, '0')
+      .replace(/0+$/, '');
     return `${isNegative ? '-' : ''}0${fractional ? `.${fractional}` : ''}`;
   }
 
@@ -151,14 +189,15 @@ export function resolveTokenPresentation(
     : fallbackIconUri || null;
 
   const primaryLabel = pickString(name, symbol, shortCategory);
-  const secondaryLabel =
-    name && symbol && name !== symbol ? symbol : null;
+  const secondaryLabel = name && symbol && name !== symbol ? symbol : null;
 
   const shouldShowStatus =
     metadata?.status === 'loading' ||
     metadata?.isRefreshing === true ||
     metadata?.freshness === 'refreshing';
-  const statusLabel = shouldShowStatus ? getBcmrMetadataStatusLabel(metadata) : null;
+  const statusLabel = shouldShowStatus
+    ? getBcmrMetadataStatusLabel(metadata)
+    : null;
   const statusTone: TokenPresentationStatusTone | null = shouldShowStatus
     ? getBcmrMetadataStatusTone(metadata)
     : null;

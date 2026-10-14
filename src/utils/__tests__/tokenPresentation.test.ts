@@ -4,6 +4,7 @@ import {
   formatAtomicTokenAmount,
   resolveTokenPresentation,
   shortTokenCategory,
+  tokenPresentationFallbackFromBcmr,
 } from '../tokenPresentation';
 
 function makeMetadata(): BcmrTokenMetadataState {
@@ -55,31 +56,24 @@ describe('tokenPresentation', () => {
   });
 
   it('shows a status while bcmr metadata is still loading', () => {
-    const presentation = resolveTokenPresentation(
-      '0123456789abcdef',
-      {
-        ...makeMetadata(),
-        status: 'loading',
-        freshness: 'refreshing',
-        isRefreshing: true,
-      }
-    );
+    const presentation = resolveTokenPresentation('0123456789abcdef', {
+      ...makeMetadata(),
+      status: 'loading',
+      freshness: 'refreshing',
+      isRefreshing: true,
+    });
 
     expect(presentation.statusLabel).toBe('Refreshing');
     expect(presentation.statusTone).toBe('accent');
   });
 
   it('falls back to local token data before a shortened category hash', () => {
-    const presentation = resolveTokenPresentation(
-      '0123456789abcdef',
-      null,
-      {
-        name: 'Local Token',
-        symbol: 'LT',
-        decimals: 0,
-        iconUri: '/local-icon.png',
-      }
-    );
+    const presentation = resolveTokenPresentation('0123456789abcdef', null, {
+      name: 'Local Token',
+      symbol: 'LT',
+      decimals: 0,
+      iconUri: '/local-icon.png',
+    });
 
     expect(presentation.primaryLabel).toBe('Local Token');
     expect(presentation.secondaryLabel).toBe('LT');
@@ -87,5 +81,35 @@ describe('tokenPresentation', () => {
     expect(presentation.statusLabel).toBeNull();
     expect(presentation.statusTone).toBeNull();
     expect(shortTokenCategory('0123456789abcdef')).toBe('0123...cdef');
+  });
+
+  it('reads incomplete BCMR snapshots without throwing', () => {
+    expect(tokenPresentationFallbackFromBcmr(undefined)).toBeNull();
+    expect(tokenPresentationFallbackFromBcmr({})).toEqual({
+      name: null,
+      symbol: null,
+      decimals: 0,
+      iconUri: null,
+    });
+    expect(
+      tokenPresentationFallbackFromBcmr({
+        name: 'No Uris',
+        token: { symbol: 'NU', decimals: 2 },
+      })
+    ).toEqual({
+      name: 'No Uris',
+      symbol: 'NU',
+      decimals: 2,
+      iconUri: null,
+    });
+
+    const presentation = resolveTokenPresentation(
+      'ad95860f11111111111111111111111111111111111111111111111111115753',
+      null,
+      tokenPresentationFallbackFromBcmr({})
+    );
+    expect(presentation.primaryLabel).toBe('ad95...5753');
+    expect(presentation.iconUri).toBeNull();
+    expect(presentation.decimals).toBe(0);
   });
 });
