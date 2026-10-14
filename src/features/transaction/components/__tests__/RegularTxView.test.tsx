@@ -1,5 +1,9 @@
+/** @vitest-environment jsdom */
+
+import '@testing-library/jest-dom/vitest';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type {
   BcmrSnapshot,
   BcmrTokenMetadataState,
@@ -36,6 +40,10 @@ function makeMetadata(): BcmrTokenMetadataState {
 }
 
 describe('RegularTxView', () => {
+  afterEach(() => {
+    cleanup();
+  });
+
   it('shows the same token identity in the selector and preview', () => {
     const tokenMetadata = {
       [SAMPLE_TOKEN_CATEGORY]: makeMetadata(),
@@ -101,5 +109,106 @@ describe('RegularTxView', () => {
     expect(html).toContain('SMP');
     expect(html).toContain('FT');
     expect(html).toContain('1234');
+  });
+
+  it('applies typed FT amounts when the category has no BCMR metadata', () => {
+    const setTokenAmount = vi.fn();
+    const selectedUtxos = [
+      {
+        address: 'bitcoincash:qpm2qsznhks23z7629mms6s4cwef74vcwvy22gdx6a',
+        height: 100,
+        tx_hash: '11'.repeat(32),
+        tx_pos: 0,
+        value: 1000,
+        amount: 1000,
+        token: {
+          category: SAMPLE_TOKEN_CATEGORY,
+          amount: 25n,
+        },
+      } as UTXO,
+    ];
+
+    render(
+      <I18nContext.Provider
+        value={{
+          locale: 'en',
+          setLocale: () => undefined,
+          t: (key) => translations.en[key],
+        }}
+      >
+        <RegularTxView
+          recipientAddress="bitcoincash:qpm2qsznhks23z7629mms6s4cwef74vcwvy22gdx6a"
+          setRecipientAddress={() => undefined}
+          transferAmount={1000}
+          setTransferAmount={() => undefined}
+          categoriesFromSelected={[SAMPLE_TOKEN_CATEGORY]}
+          tokenAmount={0n}
+          setTokenAmount={setTokenAmount}
+          selectedTokenCategory={SAMPLE_TOKEN_CATEGORY}
+          setSelectedTokenCategory={() => undefined}
+          tokenMetadata={{}}
+          selectedUtxos={selectedUtxos}
+          scanBarcode={async () => undefined}
+          handleAddOutput={async () => undefined}
+          txOutputs={[]}
+        />
+      </I18nContext.Provider>
+    );
+
+    fireEvent.change(screen.getByPlaceholderText(/Enter amount/), {
+      target: { value: '7' },
+    });
+
+    expect(setTokenAmount).toHaveBeenCalledWith(7n);
+  });
+
+  it('blocks adding an FT-category output with amount 0', () => {
+    const handleAddOutput = vi.fn();
+
+    render(
+      <I18nContext.Provider
+        value={{
+          locale: 'en',
+          setLocale: () => undefined,
+          t: (key) => translations.en[key],
+        }}
+      >
+        <RegularTxView
+          recipientAddress="bitcoincash:qpm2qsznhks23z7629mms6s4cwef74vcwvy22gdx6a"
+          setRecipientAddress={() => undefined}
+          transferAmount={1000}
+          setTransferAmount={() => undefined}
+          categoriesFromSelected={[SAMPLE_TOKEN_CATEGORY]}
+          tokenAmount={0n}
+          setTokenAmount={() => undefined}
+          selectedTokenCategory={SAMPLE_TOKEN_CATEGORY}
+          setSelectedTokenCategory={() => undefined}
+          tokenMetadata={{}}
+          selectedUtxos={[
+            {
+              address: 'bitcoincash:qpm2qsznhks23z7629mms6s4cwef74vcwvy22gdx6a',
+              height: 100,
+              tx_hash: '11'.repeat(32),
+              tx_pos: 0,
+              value: 1000,
+              token: {
+                category: SAMPLE_TOKEN_CATEGORY,
+                amount: 25n,
+              },
+            } as UTXO,
+          ]}
+          scanBarcode={async () => undefined}
+          handleAddOutput={handleAddOutput}
+          txOutputs={[]}
+        />
+      </I18nContext.Provider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Add Output' }));
+
+    expect(handleAddOutput).not.toHaveBeenCalled();
+    expect(screen.getByRole('alert')).toHaveTextContent(
+      'Enter a fungible token amount greater than 0.'
+    );
   });
 });

@@ -11,7 +11,9 @@ import OutboundTransactionTracker from '../../../services/OutboundTransactionTra
 
 vi.mock('../../../utils/cashAddress', () => ({
   toTokenAwareCashAddress: vi.fn((address: string) =>
-    address.includes(':q') ? address.replace(':q', ':z') : `converted:${address}`
+    address.includes(':q')
+      ? address.replace(':q', ':z')
+      : `converted:${address}`
   ),
 }));
 
@@ -63,7 +65,9 @@ describe('TransactionManager', () => {
       { tx_hash: 'b'.repeat(64), height: 101 },
     ];
 
-    mockedElectrumService.getTransactionHistory.mockResolvedValue(history as never);
+    mockedElectrumService.getTransactionHistory.mockResolvedValue(
+      history as never
+    );
 
     const upsertStmt = {
       run: vi.fn(),
@@ -80,14 +84,27 @@ describe('TransactionManager', () => {
     } as never);
 
     const tm = TransactionManager();
-    const result = await tm.fetchAndStoreTransactionHistory(7, 'bitcoincash:q1');
+    const result = await tm.fetchAndStoreTransactionHistory(
+      7,
+      'bitcoincash:q1'
+    );
 
     expect(result).toEqual(history);
     expect(db.exec).toHaveBeenCalledWith('BEGIN TRANSACTION');
     expect(db.exec).toHaveBeenCalledWith('COMMIT');
     expect(upsertStmt.run).toHaveBeenCalledTimes(2);
-    expect(upsertStmt.run).toHaveBeenNthCalledWith(1, [7, 'a'.repeat(64), 100, '']);
-    expect(upsertStmt.run).toHaveBeenNthCalledWith(2, [7, 'b'.repeat(64), 101, '']);
+    expect(upsertStmt.run).toHaveBeenNthCalledWith(1, [
+      7,
+      'a'.repeat(64),
+      100,
+      '',
+    ]);
+    expect(upsertStmt.run).toHaveBeenNthCalledWith(2, [
+      7,
+      'b'.repeat(64),
+      101,
+      '',
+    ]);
     expect(upsertStmt.free).toHaveBeenCalledTimes(1);
   });
 
@@ -95,7 +112,9 @@ describe('TransactionManager', () => {
     const history: TransactionHistoryItem[] = [
       { tx_hash: 'c'.repeat(64), height: 1 },
     ];
-    mockedElectrumService.getTransactionHistory.mockResolvedValue(history as never);
+    mockedElectrumService.getTransactionHistory.mockResolvedValue(
+      history as never
+    );
     const getDatabase = vi.fn();
     mockedDatabaseService.mockReturnValue({ getDatabase } as never);
     mockedStore.getState.mockReturnValue({
@@ -162,7 +181,11 @@ describe('TransactionManager', () => {
   it('sendTransaction retries the same raw tx after an ambiguous broadcast failure', async () => {
     const sendTransaction = vi
       .fn()
-      .mockRejectedValueOnce(new Error('request(blockchain.transaction.broadcast) timed out after 12000ms'))
+      .mockRejectedValueOnce(
+        new Error(
+          'request(blockchain.transaction.broadcast) timed out after 12000ms'
+        )
+      )
       .mockResolvedValueOnce('txid-ok');
 
     mockedTxBuilderHelper.mockReturnValue({
@@ -200,16 +223,20 @@ describe('TransactionManager', () => {
     const result = await tm.sendTransaction('01000000000100');
 
     expect(result.txid).toBeNull();
-    expect(result.errorMessage).toContain('spend the same input more than once');
+    expect(result.errorMessage).toContain(
+      'spend the same input more than once'
+    );
     expect(mockedOutboundTracker.remove).toHaveBeenCalled();
   });
 
   it('sendTransaction returns a friendly script-verification error and clears tracker', async () => {
-    const sendTransaction = vi.fn().mockRejectedValueOnce(
-      new Error(
-        'mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element) (code 16)'
-      )
-    );
+    const sendTransaction = vi
+      .fn()
+      .mockRejectedValueOnce(
+        new Error(
+          'mandatory-script-verify-flag-failed (Script evaluated without error but finished with a false/empty top stack element) (code 16)'
+        )
+      );
 
     mockedTxBuilderHelper.mockReturnValue({
       sendTransaction,
@@ -276,6 +303,67 @@ describe('TransactionManager', () => {
     expect(Number(out?.amount)).toBeGreaterThanOrEqual(TOKEN_OUTPUT_SATS);
 
     expect(mockedStore.dispatch).toHaveBeenCalledTimes(1);
+  });
+
+  it('addOutput rejects an FT-category output with amount 0', () => {
+    const tm = TransactionManager();
+
+    const selectedUtxos: UTXO[] = [
+      {
+        address: 'bitcoincash:qsource',
+        height: 0,
+        tx_hash: 'c'.repeat(64),
+        tx_pos: 1,
+        value: 2000,
+        token: { category: 'cat1', amount: 100 },
+      },
+    ];
+
+    expect(() =>
+      tm.addOutput(
+        'bitcoincash:qrecipient',
+        1000,
+        0n,
+        'cat1',
+        selectedUtxos,
+        []
+      )
+    ).toThrow('Fungible token outputs require a token amount greater than 0.');
+    expect(mockedStore.dispatch).not.toHaveBeenCalled();
+  });
+
+  it('addOutput still allows NFT outputs with token amount 0', () => {
+    const tm = TransactionManager();
+
+    const selectedUtxos: UTXO[] = [
+      {
+        address: 'bitcoincash:qsource',
+        height: 0,
+        tx_hash: 'c'.repeat(64),
+        tx_pos: 1,
+        value: 2000,
+        token: {
+          category: 'cat1',
+          amount: 0,
+          nft: { capability: 'none', commitment: 'aa' },
+        },
+      },
+    ];
+
+    const out = tm.addOutput(
+      'bitcoincash:qrecipient',
+      1000,
+      0n,
+      'cat1',
+      selectedUtxos,
+      []
+    );
+
+    expect(out?.token).toEqual({
+      amount: 0,
+      category: 'cat1',
+      nft: { capability: 'none', commitment: 'aa' },
+    });
   });
 
   it('addOutput converts token recipients when no wallet token-address mapping exists', () => {

@@ -1,5 +1,6 @@
 // src/hooks/useHandleTransaction.ts
 
+import { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import TransactionService, {
   type BroadcastResult,
@@ -13,6 +14,11 @@ import {
 } from '../state/slices/transactionBuilderSlice';
 import { resetContract } from '../state/slices/contractSlice';
 import { logError, toErrorMessage } from '../utils/errorHandling';
+import {
+  detectTransactionBurns,
+  hasTransactionBurns,
+  type TransactionBurnReport,
+} from '../utils/detectTransactionBurns';
 // import { optimisticRemoveSpentByOutpoints, requestUTXORefreshForMany } from '../workers/UTXOWorkerService';
 
 interface BuildTransactionResult {
@@ -37,6 +43,10 @@ const useHandleTransaction = (
   onBroadcastSuccess?: () => void
 ) => {
   const dispatch = useDispatch();
+  const [burnReport, setBurnReport] = useState<TransactionBurnReport | null>(
+    null
+  );
+  const [showBurnConfirm, setShowBurnConfirm] = useState(false);
 
   const handleBuildTransaction = async () => {
     if (selectedUtxos.length === 0) {
@@ -112,6 +122,8 @@ const useHandleTransaction = (
       // });
 
       if (!transaction.finalTransaction) {
+        setBurnReport(null);
+        setShowBurnConfirm(false);
         setErrorMessage(`Failed to build transaction: ${transaction.errorMsg}`);
         setLoading(false);
         return;
@@ -132,6 +144,16 @@ const useHandleTransaction = (
         // console.log('Final Outputs after Build:', transaction.finalOutputs);
       }
 
+      const report = detectTransactionBurns({
+        inputs: selectedUtxos,
+        outputs: transaction.finalOutputs ?? [],
+        bytecodeSize: transaction.bytecodeSize,
+        txHex: transaction.finalTransaction,
+      });
+      const burnsDetected = hasTransactionBurns(report);
+      setBurnReport(burnsDetected ? report : null);
+      setShowBurnConfirm(burnsDetected);
+
       setErrorMessage(transaction.errorMsg);
       setShowRawTxPopup(true);
       setLoading(false);
@@ -141,6 +163,8 @@ const useHandleTransaction = (
         utxoCount: selectedUtxos.length,
       });
       setRawTX('');
+      setBurnReport(null);
+      setShowBurnConfirm(false);
       setErrorMessage('Error building transaction: ' + toErrorMessage(err));
       setShowRawTxPopup(true);
       setLoading(false);
@@ -149,8 +173,18 @@ const useHandleTransaction = (
 
   const handleSendTransaction = async (
     rawTX: string,
-    setTransactionId: React.Dispatch<React.SetStateAction<string>>
+    setTransactionId: React.Dispatch<React.SetStateAction<string>>,
+    options?: { confirmBurns?: boolean }
   ): Promise<BroadcastResult> => {
+    if (
+      burnReport &&
+      hasTransactionBurns(burnReport) &&
+      !options?.confirmBurns
+    ) {
+      setShowBurnConfirm(true);
+      return { txid: null, errorMessage: null };
+    }
+
     try {
       setLoading(true);
       const transactionID = await TransactionService.sendTransaction(
@@ -181,6 +215,8 @@ const useHandleTransaction = (
 
       // Clear state only on success
       setRawTX('');
+      setBurnReport(null);
+      setShowBurnConfirm(false);
       dispatch(clearTransaction());
       dispatch(resetContract());
       onBroadcastSuccess?.();
@@ -199,7 +235,28 @@ const useHandleTransaction = (
     }
   };
 
-  return { handleBuildTransaction, handleSendTransaction };
+  const cancelBurnConfirm = () => {
+    setShowBurnConfirm(false);
+  };
+
+  const confirmBurnAndBroadcast = (
+    rawTX: string,
+    setTransactionId: React.Dispatch<React.SetStateAction<string>>
+  ): Promise<BroadcastResult> => {
+    setShowBurnConfirm(false);
+    return handleSendTransaction(rawTX, setTransactionId, {
+      confirmBurns: true,
+    });
+  };
+
+  return {
+    handleBuildTransaction,
+    handleSendTransaction,
+    burnReport,
+    showBurnConfirm,
+    cancelBurnConfirm,
+    confirmBurnAndBroadcast,
+  };
 };
 
 export default useHandleTransaction;

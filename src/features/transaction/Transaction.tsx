@@ -37,6 +37,7 @@ import {
   getPreferredBchChangeAddress,
 } from '../../utils/changeAddressPreference';
 import { useI18n } from '../../i18n/useI18n';
+import BurnConfirmDialog from './components/BurnConfirmDialog';
 
 const noopSetUtxos: Dispatch<SetStateAction<UTXO[]>> = () => undefined;
 
@@ -179,21 +180,27 @@ const Transaction: React.FC = () => {
   /**
    * Use custom hook to handle building and sending transactions.
    */
-  const { handleBuildTransaction: buildTransaction, handleSendTransaction } =
-    useHandleTransaction(
-      txOutputs,
-      contractFunctionInputs,
-      changeAddress,
-      selectedUtxos,
-      setBytecodeSize,
-      setRawTX,
-      setErrorMessage,
-      setShowRawTxPopup,
-      setShowTxIdPopup, // Pass the setter to the hook
-      setBroadcastState,
-      setLoading,
-      resetTransactionViewState
-    );
+  const {
+    handleBuildTransaction: buildTransaction,
+    handleSendTransaction,
+    burnReport,
+    showBurnConfirm,
+    cancelBurnConfirm,
+    confirmBurnAndBroadcast,
+  } = useHandleTransaction(
+    txOutputs,
+    contractFunctionInputs,
+    changeAddress,
+    selectedUtxos,
+    setBytecodeSize,
+    setRawTX,
+    setErrorMessage,
+    setShowRawTxPopup,
+    setShowTxIdPopup, // Pass the setter to the hook
+    setBroadcastState,
+    setLoading,
+    resetTransactionViewState
+  );
 
   const {
     handleRemoveOutput,
@@ -722,6 +729,15 @@ const Transaction: React.FC = () => {
             currentNetwork={currentNetwork}
             broadcastState={broadcastState}
             closePopups={closePopups}
+          />
+
+          <BurnConfirmDialog
+            open={showBurnConfirm}
+            report={burnReport}
+            onCancel={cancelBurnConfirm}
+            onConfirm={() => {
+              void confirmBurnAndBroadcast(rawTX, setTransactionId);
+            }}
           />
 
           {showPopup && currentContractABI.length > 0 && (

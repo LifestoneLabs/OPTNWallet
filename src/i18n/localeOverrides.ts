@@ -2035,6 +2035,18 @@ export const localeOverrides = {
     'builder.transferMinimum': 'يجب ألا يقل مبلغ التحويل عن {count}.',
     'builder.noQrCode': 'لم يتم العثور على رمز QR. حاول مرة أخرى.',
     'builder.opReturnEmpty': 'لا يمكن أن تكون بيانات OP_RETURN فارغة.',
+    'builder.ftAmountRequired': 'أدخل كمية رمز قابل للاستبدال أكبر من 0.',
+    'builder.burnConfirmTitle': 'ستحرق هذه المعاملة أصولاً',
+    'builder.burnConfirmDescription':
+      'سيتم تدمير الرموز غير المعينة أو حرق BCH المرتفع بشكل غير معتاد إذا بثّت المعاملة. راجع العناصر أدناه.',
+    'builder.burnConfirmFungible': 'الرموز القابلة للاستبدال',
+    'builder.burnConfirmNfts': 'NFTs',
+    'builder.burnConfirmBch': 'BCH',
+    'builder.burnConfirmOpReturn': 'مخرج OP_RETURN: {amount} ساتوشي',
+    'builder.burnConfirmExcessFee':
+      'رسوم مفرطة: {amount} ساتوشي (أكثر من 10× الرسوم حسب الحجم)',
+    'builder.burnConfirmIrreversible': 'لا يمكن التراجع عن الحرق.',
+    'builder.burnAndBroadcast': 'حرق وبث',
     'builder.back': 'رجوع',
     'builder.confirmTransaction': 'تأكيد المعاملة',
     'builder.dragToConfirm': 'اسحب للتأكيد',

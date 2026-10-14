@@ -28,6 +28,10 @@ import {
   txBytesFromHex,
 } from './feePolicy';
 import OutboundTransactionTracker from '../../services/OutboundTransactionTracker';
+import {
+  isTokenCategorySelected,
+  toAtomicAmount,
+} from '../../utils/detectTransactionBurns';
 
 function deriveTxidFromRawTx(rawTX: string): string | null {
   try {
@@ -136,14 +140,23 @@ export default function TransactionManager() {
     const history = await ElectrumService.getTransactionHistory(address);
     if (!isCurrentWalletSession(walletId, sessionGeneration)) return [];
     if (!Array.isArray(history)) {
-      logWarn('TransactionManager.fetchAndStoreTransactionHistory', 'Skipping non-array transaction history response', {
-        address,
-        walletId,
-      });
+      logWarn(
+        'TransactionManager.fetchAndStoreTransactionHistory',
+        'Skipping non-array transaction history response',
+        {
+          address,
+          walletId,
+        }
+      );
       return [];
     }
 
-    return storeTransactionHistory(walletId, address, history, sessionGeneration);
+    return storeTransactionHistory(
+      walletId,
+      address,
+      history,
+      sessionGeneration
+    );
   }
 
   async function fetchAndStoreTransactionHistories(
@@ -189,10 +202,14 @@ export default function TransactionManager() {
           sessionGeneration
         );
       } catch (error) {
-        logError('TransactionManager.fetchAndStoreTransactionHistories', error, {
-          address,
-          walletId,
-        });
+        logError(
+          'TransactionManager.fetchAndStoreTransactionHistories',
+          error,
+          {
+            address,
+            walletId,
+          }
+        );
       }
     }
 
@@ -211,7 +228,7 @@ export default function TransactionManager() {
     const derivedTxid = deriveTxidFromRawTx(rawTX);
     const walletId =
       walletIdOverride === undefined
-        ? (store.getState().wallet_id.currentWalletId ?? null)
+        ? store.getState().wallet_id.currentWalletId ?? null
         : walletIdOverride;
     const priorAttempt = derivedTxid
       ? await OutboundTransactionTracker.getByTxid(derivedTxid, walletId)
@@ -293,12 +310,8 @@ export default function TransactionManager() {
       broadcastState:
         txid && !errorMessage
           ? derivedTxid &&
-            (
-              await OutboundTransactionTracker.getByTxid(
-                derivedTxid,
-                walletId
-              )
-            )?.state === 'submitted'
+            (await OutboundTransactionTracker.getByTxid(derivedTxid, walletId))
+              ?.state === 'submitted'
             ? 'submitted'
             : 'broadcasted'
           : undefined,
@@ -328,7 +341,7 @@ export default function TransactionManager() {
       amount: transferAmount || 0,
     };
 
-    if (selectedTokenCategory) {
+    if (isTokenCategorySelected(selectedTokenCategory)) {
       const existingTokenUTXO = selectedUtxos.find(
         (utxo) => utxo.token && utxo.token.category === selectedTokenCategory
       );
@@ -339,6 +352,15 @@ export default function TransactionManager() {
           utxo.tx_pos === 0 &&
           utxo.tx_hash === selectedTokenCategory
       );
+
+      const isNftOutput =
+        Boolean(existingTokenUTXO?.token?.nft) ||
+        (nftCapability !== undefined && nftCommitment !== undefined);
+      if (!isNftOutput && toAtomicAmount(tokenAmount) === 0n) {
+        throw new Error(
+          'Fungible token outputs require a token amount greater than 0.'
+        );
+      }
 
       if (existingTokenUTXO && existingTokenUTXO.token) {
         newOutput.token = {
@@ -378,7 +400,8 @@ export default function TransactionManager() {
         if (tokenAddress) {
           newOutput.recipientAddress = tokenAddress;
         } else {
-          newOutput.recipientAddress = toTokenAwareCashAddress(recipientAddress);
+          newOutput.recipientAddress =
+            toTokenAwareCashAddress(recipientAddress);
         }
 
         if (newOutput.amount < TOKEN_OUTPUT_SATS) {
@@ -406,7 +429,8 @@ export default function TransactionManager() {
         if (tokenAddress) {
           newOutput.recipientAddress = tokenAddress;
         } else {
-          newOutput.recipientAddress = toTokenAwareCashAddress(recipientAddress);
+          newOutput.recipientAddress =
+            toTokenAwareCashAddress(recipientAddress);
         }
 
         if (newOutput.amount < TOKEN_OUTPUT_SATS) {

@@ -38,7 +38,7 @@ const RegularTxView: React.FC<RegularTxViewProps> = ({
   transferAmount,
   setTransferAmount,
   categoriesFromSelected,
-  // tokenAmount,
+  tokenAmount,
   setTokenAmount,
   selectedTokenCategory,
   setSelectedTokenCategory,
@@ -50,6 +50,7 @@ const RegularTxView: React.FC<RegularTxViewProps> = ({
 }) => {
   const { t } = useI18n();
   const [inputTokenAmount, setInputTokenAmount] = useState<string>('');
+  const [tokenAmountError, setTokenAmountError] = useState<string | null>(null);
 
   const isNft =
     selectedTokenCategory && selectedTokenCategory !== 'none'
@@ -140,6 +141,7 @@ const RegularTxView: React.FC<RegularTxViewProps> = ({
     e: React.ChangeEvent<HTMLInputElement>
   ) => {
     const value = e.target.value;
+    // Missing BCMR metadata is treated as 0 decimals so typed amounts still apply.
     const decimals = tokenMetadata[selectedTokenCategory]?.decimals || 0;
     const maxTokenAmount = tokenTotals[selectedTokenCategory] || BigInt(0);
 
@@ -149,12 +151,9 @@ const RegularTxView: React.FC<RegularTxViewProps> = ({
       !value.includes('.') || fractional.length <= decimals;
     if ((hasValidDecimalShape && hasValidPrecision) || value === '') {
       setInputTokenAmount(value);
+      setTokenAmountError(null);
 
-      if (
-        !isNft &&
-        selectedTokenCategory &&
-        tokenMetadata[selectedTokenCategory]
-      ) {
+      if (!isNft && selectedTokenCategory && selectedTokenCategory !== 'none') {
         try {
           const amount = parseFloat(value);
           if (!isNaN(amount)) {
@@ -181,6 +180,21 @@ const RegularTxView: React.FC<RegularTxViewProps> = ({
         }
       }
     }
+  };
+
+  const onAddOutput = () => {
+    if (selectedTokenCategory && selectedTokenCategory !== 'none' && !isNft) {
+      const atomicAmount =
+        typeof tokenAmount === 'bigint'
+          ? tokenAmount
+          : BigInt(tokenAmount || 0);
+      if (atomicAmount === 0n) {
+        setTokenAmountError(t('builder.ftAmountRequired'));
+        return;
+      }
+    }
+    setTokenAmountError(null);
+    void handleAddOutput();
   };
 
   return (
@@ -319,6 +333,11 @@ const RegularTxView: React.FC<RegularTxViewProps> = ({
               })}
             />
           )}
+          {tokenAmountError && (
+            <p className="mt-1 text-sm wallet-danger-text" role="alert">
+              {tokenAmountError}
+            </p>
+          )}
         </div>
       )}
 
@@ -361,10 +380,7 @@ const RegularTxView: React.FC<RegularTxViewProps> = ({
       </div>
 
       <div className="flex flex-col items-end justific-end mt-4">
-        <button
-          onClick={() => void handleAddOutput()} // ✅ avoid unhandled promise
-          className="wallet-btn-primary"
-        >
+        <button onClick={onAddOutput} className="wallet-btn-primary">
           {t('builder.addOutput')}
         </button>
       </div>
