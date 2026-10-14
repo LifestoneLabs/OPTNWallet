@@ -34,6 +34,18 @@ export type RawTxIoView = {
   token: RawTxTokenView | null;
 };
 
+export type BuiltSourceOutputView = {
+  valueSatoshis: bigint;
+  token?: {
+    category: string;
+    amount: bigint;
+    nft?: {
+      capability: string;
+      commitment: string;
+    };
+  } | null;
+};
+
 export function computeTransactionFeeSats(
   inputSats: readonly bigint[],
   outputSats: readonly bigint[]

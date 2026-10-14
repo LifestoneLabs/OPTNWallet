@@ -11,6 +11,7 @@ import { type BroadcastState } from '../../../services/TransactionService';
 import { useI18n } from '../../../i18n/useI18n';
 import { copyToClipboard } from '../../../utils/clipboard';
 import type { UTXO } from '../../../types/types';
+import type { BuiltSourceOutputView } from '../../../utils/rawTransactionDetails';
 import RawTransactionDetails from './RawTransactionDetails';
 
 interface ErrorAndStatusPopupsProps {
@@ -23,6 +24,7 @@ interface ErrorAndStatusPopupsProps {
   broadcastState?: BroadcastState;
   closePopups: () => void;
   selectedUtxos?: UTXO[];
+  sourceOutputs?: BuiltSourceOutputView[];
 }
 
 const ErrorAndStatusPopups: React.FC<ErrorAndStatusPopupsProps> = ({
@@ -35,6 +37,7 @@ const ErrorAndStatusPopups: React.FC<ErrorAndStatusPopupsProps> = ({
   broadcastState,
   closePopups,
   selectedUtxos = [],
+  sourceOutputs = [],
 }) => {
   const { t } = useI18n();
   const explorerChoice = useSelector(selectExplorerChoice);
@@ -53,6 +56,7 @@ const ErrorAndStatusPopups: React.FC<ErrorAndStatusPopupsProps> = ({
           <RawTransactionDetails
             rawTX={rawTX}
             selectedUtxos={selectedUtxos}
+            sourceOutputs={sourceOutputs}
             currentNetwork={currentNetwork}
             transactionId={transactionId}
           />

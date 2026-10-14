@@ -115,6 +115,16 @@ describe('rawTransactionDetails fee and formatting', () => {
       })
     ).toBe(5460n);
     expect(utxoSats(tokenPlusBch)).not.toBe(1n);
+    // Prefer Electrum `value` over a stale larger valueSatoshis (7220-change bug).
+    expect(
+      utxoSats({
+        ...tokenPlusBch,
+        value: 6500,
+        amount: 6500,
+        satoshis: 0n,
+        valueSatoshis: 8500n,
+      })
+    ).toBe(6500n);
 
     const fee = computeTransactionFeeSats(
       [utxoSats(tokenPlusBch)],

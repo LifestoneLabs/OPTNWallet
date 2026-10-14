@@ -15,10 +15,13 @@ import {
 import { resetContract } from '../state/slices/contractSlice';
 import { logError, toErrorMessage } from '../utils/errorHandling';
 import {
+  assertSafeTransactionValues,
   detectTransactionBurns,
   hasTransactionBurns,
+  utxoSats,
   type TransactionBurnReport,
 } from '../utils/detectTransactionBurns';
+import type { BuiltSourceOutput } from '../apis/TransactionManager/TransactionBuilderHelper';
 // import { optimisticRemoveSpentByOutpoints, requestUTXORefreshForMany } from '../workers/UTXOWorkerService';
 
 interface BuildTransactionResult {
@@ -26,6 +29,7 @@ interface BuildTransactionResult {
   finalTransaction: string;
   finalOutputs: TransactionOutput[] | null;
   errorMsg: string;
+  sourceOutputs?: BuiltSourceOutput[];
 }
 
 const useHandleTransaction = (
@@ -47,6 +51,7 @@ const useHandleTransaction = (
     null
   );
   const [showBurnConfirm, setShowBurnConfirm] = useState(false);
+  const [sourceOutputs, setSourceOutputs] = useState<BuiltSourceOutput[]>([]);
 
   const handleBuildTransaction = async () => {
     if (selectedUtxos.length === 0) {
@@ -55,14 +60,10 @@ const useHandleTransaction = (
       return;
     }
     // Calculate the sum of selected UTXOs as bigint
-    const inputSum = selectedUtxos.reduce((sum, utxo) => {
-      // Prefer 'amount' if it exists; otherwise, use 'value'
-      // Convert to bigint for the calculation
-      const utxoAmount =
-        utxo.amount !== undefined ? BigInt(utxo.amount) : BigInt(utxo.value);
-
-      return sum + utxoAmount;
-    }, 0n);
+    const inputSum = selectedUtxos.reduce(
+      (sum, utxo) => sum + utxoSats(utxo),
+      0n
+    );
 
     // Calculate the sum of transaction outputs as bigint
     const outputSum = txOutputs.reduce((sum, txOutput) => {
@@ -124,6 +125,7 @@ const useHandleTransaction = (
       if (!transaction.finalTransaction) {
         setBurnReport(null);
         setShowBurnConfirm(false);
+        setSourceOutputs([]);
         setErrorMessage(`Failed to build transaction: ${transaction.errorMsg}`);
         setLoading(false);
         return;
@@ -135,6 +137,7 @@ const useHandleTransaction = (
       if (transaction.finalOutputs) {
         setBytecodeSize(transaction.bytecodeSize);
         setRawTX(transaction.finalTransaction);
+        setSourceOutputs(transaction.sourceOutputs ?? []);
         // Clear existing outputs
         dispatch(clearTransaction());
 
@@ -165,6 +168,7 @@ const useHandleTransaction = (
       setRawTX('');
       setBurnReport(null);
       setShowBurnConfirm(false);
+      setSourceOutputs([]);
       setErrorMessage('Error building transaction: ' + toErrorMessage(err));
       setShowRawTxPopup(true);
       setLoading(false);
@@ -186,6 +190,33 @@ const useHandleTransaction = (
     }
 
     try {
+      const inputTotal =
+        sourceOutputs.length > 0
+          ? sourceOutputs.reduce(
+              (sum, source) => sum + (source.valueSatoshis ?? 0n),
+              0n
+            )
+          : selectedUtxos.reduce((sum, utxo) => sum + utxoSats(utxo), 0n);
+      const outputTotal = txOutputs.reduce((sum, output) => {
+        if ('amount' in output && output.amount !== undefined) {
+          return sum + BigInt(output.amount);
+        }
+        return sum;
+      }, 0n);
+      const changeOutput = txOutputs.find(
+        (output) =>
+          'recipientAddress' in output &&
+          output.recipientAddress === changeAddress
+      );
+      assertSafeTransactionValues({
+        inputTotal,
+        outputTotal,
+        changeSats:
+          changeOutput && 'amount' in changeOutput
+            ? BigInt(changeOutput.amount ?? 0)
+            : undefined,
+      });
+
       setLoading(true);
       const transactionID = await TransactionService.sendTransaction(
         rawTX,
@@ -254,6 +285,7 @@ const useHandleTransaction = (
     handleSendTransaction,
     burnReport,
     showBurnConfirm,
+    sourceOutputs,
     cancelBurnConfirm,
     confirmBurnAndBroadcast,
   };

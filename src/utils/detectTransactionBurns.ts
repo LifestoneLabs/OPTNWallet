@@ -70,10 +70,13 @@ export function toAtomicAmount(value: unknown): bigint {
 }
 
 /**
- * BCH satoshis locked in a UTXO. Token.amount is fungible-token units, not
- * BCH, so it is never consulted. 0 / 0n are skipped because `??` would
- * otherwise treat a placeholder satoshis/value field as the real amount and
- * hide valueSatoshis / value / amount.
+ * BCH satoshis locked in a UTXO.
+ *
+ * Wallet/Electrum UTXOs store BCH in `value` (and a copy in `amount`).
+ * `token.amount` is fungible-token units and is never used as BCH.
+ * 0 / 0n are skipped. Protocol aliases (`satoshis`, `valueSatoshis`) are
+ * fallbacks only — preferring them first picked stale/wrong fields and
+ * produced impossible auto-change (e.g. 7220 from a 6500-sat input).
  */
 export function utxoSats(
   utxo: Pick<UTXO, 'satoshis' | 'value' | 'amount'>
@@ -83,18 +86,52 @@ export function utxoSats(
     valueSatoshis?: unknown;
     value_satoshis?: unknown;
   };
-  const candidates = [
-    src.satoshis,
-    src.valueSatoshis,
-    src.value_satoshis,
-    src.value,
-    src.amount,
-  ];
-  for (const candidate of candidates) {
-    const sats = toAtomicAmount(candidate);
-    if (sats > 0n) return sats;
+  const tokenAmount = toAtomicAmount(
+    src.token?.amount ?? src.token_data?.amount
+  );
+
+  const named = (
+    [
+      ['value', src.value],
+      ['amount', src.amount],
+      ['satoshis', src.satoshis],
+      ['valueSatoshis', src.valueSatoshis],
+      ['value_satoshis', src.value_satoshis],
+    ] as const
+  )
+    .map(([name, raw]) => ({ name, sats: toAtomicAmount(raw) }))
+    .filter((entry) => entry.sats > 0n);
+
+  if (named.length === 0) return 0n;
+
+  const nonToken = named.filter(
+    (entry) => tokenAmount === 0n || entry.sats !== tokenAmount
+  );
+  const pool = nonToken.length > 0 ? nonToken : named;
+  const preferred = pool.find((entry) => entry.name === 'value') ?? pool[0];
+  return preferred.sats;
+}
+
+export function assertSafeTransactionValues(params: {
+  inputTotal: bigint;
+  outputTotal: bigint;
+  changeSats?: bigint;
+}): bigint {
+  const fee = params.inputTotal - params.outputTotal;
+  if (fee < 0n) {
+    throw new Error(
+      'Refusing to build or broadcast: computed fee is negative.'
+    );
   }
-  return 0n;
+  if (
+    params.changeSats !== undefined &&
+    params.changeSats > params.inputTotal
+  ) {
+    throw new Error(
+      'Refusing to build or broadcast: change exceeds input total.'
+    );
+  }
+  return fee;
 }
 
 export function isTokenCategorySelected(

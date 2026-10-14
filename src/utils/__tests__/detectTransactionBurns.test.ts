@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { requiredFeeForBytes } from '../../apis/TransactionManager/feePolicy';
 import type { TransactionOutput, UTXO } from '../../types/types';
 import {
+  assertSafeTransactionValues,
   detectTransactionBurns,
   EXCESS_FEE_BURN_MULTIPLIER,
   hasTransactionBurns,
@@ -50,6 +51,26 @@ describe('detectTransactionBurns helpers', () => {
     expect(toAtomicAmount('7')).toBe(7n);
     expect(toAtomicAmount('')).toBe(0n);
     expect(toAtomicAmount(Number.NaN)).toBe(0n);
+  });
+
+  it('refuses a negative fee or change larger than inputs', () => {
+    expect(() =>
+      assertSafeTransactionValues({ inputTotal: 6500n, outputTotal: 8220n })
+    ).toThrow(/fee is negative/);
+    expect(() =>
+      assertSafeTransactionValues({
+        inputTotal: 6500n,
+        outputTotal: 6246n,
+        changeSats: 7220n,
+      })
+    ).toThrow(/change exceeds input total/);
+    expect(
+      assertSafeTransactionValues({
+        inputTotal: 6500n,
+        outputTotal: 6246n,
+        changeSats: 5246n,
+      })
+    ).toBe(254n);
   });
 });
 

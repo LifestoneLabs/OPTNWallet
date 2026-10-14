@@ -13,6 +13,26 @@ import KeyService from '../../services/KeyService';
 import { PaperWalletSecretStore } from '../../services/PaperWalletSecretStore';
 import { deriveRpaUtxoSigningKey } from '../../services/RpaSpendKeyService';
 import { TOKEN_OUTPUT_SATS } from '../../utils/constants';
+import { utxoSats } from '../../utils/detectTransactionBurns';
+
+export type BuiltSourceOutput = {
+  valueSatoshis: bigint;
+  txid: string;
+  vout: number;
+  token?: {
+    category: string;
+    amount: bigint;
+    nft?: {
+      capability: string;
+      commitment: string;
+    };
+  } | null;
+};
+
+export type BuiltTransaction = {
+  hex: string;
+  sourceOutputs: BuiltSourceOutput[];
+};
 
 type TransactionBuilderHelperOptions = {
   allowImplicitFungibleTokenBurn?: boolean;
@@ -239,21 +259,16 @@ export default function TransactionBuilderHelper(
         utxos.map(async (utxo) => {
         let unlocker: unknown;
 
-        // Prefer nullish coalescing so 0 doesn't fall through
-        const value = (utxo.value ?? utxo.amount) as number | undefined;
-        if (
-          value === undefined ||
-          value === null ||
-          Number.isNaN(Number(value))
-        ) {
+        const satoshis = utxoSats(utxo);
+        if (satoshis <= 0n) {
           throw new Error(
-            `UTXO missing value/amount for ${utxo.tx_hash}:${utxo.tx_pos}`
+            `UTXO missing BCH value for ${utxo.tx_hash}:${utxo.tx_pos}`
           );
         }
 
         const processedUtxo = {
           ...utxo,
-          value,
+          value: Number(satoshis),
         };
 
         if (!processedUtxo.contractName || !processedUtxo.abi) {
@@ -346,7 +361,7 @@ export default function TransactionBuilderHelper(
         return {
           txid: processedUtxo.tx_hash,
           vout: processedUtxo.tx_pos,
-          satoshis: BigInt(processedUtxo.value),
+          satoshis,
           unlocker,
           token: processedUtxo.token
             ? {
@@ -383,8 +398,27 @@ export default function TransactionBuilderHelper(
     }
 
     try {
-      const builtTransaction = await txBuilder.build();
-      return builtTransaction;
+      const hex = await txBuilder.build();
+      const sourceOutputs: BuiltSourceOutput[] = unlockableUtxos.map(
+        (input) => ({
+          valueSatoshis: input.satoshis,
+          txid: String(input.txid),
+          vout: Number(input.vout),
+          token: input.token
+            ? {
+                category: String(input.token.category),
+                amount: toBigIntAmount(input.token.amount ?? 0),
+                nft: input.token.nft
+                  ? {
+                      capability: String(input.token.nft.capability ?? ''),
+                      commitment: String(input.token.nft.commitment ?? ''),
+                    }
+                  : undefined,
+              }
+            : null,
+        })
+      );
+      return { hex, sourceOutputs };
     } catch (error) {
       console.error('Error building transaction:', error);
       throw error;

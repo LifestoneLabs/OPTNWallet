@@ -11,6 +11,7 @@ import type { TokenCapability } from './cashtokens';
 import ContractManager from '../apis/ContractManager/ContractManager';
 import type { ContractInstanceRow } from '../apis/ContractManager/ContractManager';
 import TransactionManager from '../apis/TransactionManager/TransactionManager';
+import type { BuiltSourceOutput } from '../apis/TransactionManager/TransactionBuilderHelper';
 import { store } from '../state/store';
 import { logError } from '../utils/errorHandling';
 import { isDeterministicBroadcastError } from '../utils/broadcastErrors';
@@ -421,6 +422,7 @@ class TransactionService {
     finalTransaction: string;
     finalOutputs: TransactionOutput[] | null;
     errorMsg: string;
+    sourceOutputs: BuiltSourceOutput[];
   }> {
     return await this.getTransactionManager().buildTransaction(
       outputs,

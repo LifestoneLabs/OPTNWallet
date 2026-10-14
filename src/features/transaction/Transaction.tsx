@@ -185,6 +185,7 @@ const Transaction: React.FC = () => {
     handleSendTransaction,
     burnReport,
     showBurnConfirm,
+    sourceOutputs,
     cancelBurnConfirm,
     confirmBurnAndBroadcast,
   } = useHandleTransaction(
@@ -730,6 +731,7 @@ const Transaction: React.FC = () => {
             broadcastState={broadcastState}
             closePopups={closePopups}
             selectedUtxos={selectedUtxos}
+            sourceOutputs={sourceOutputs}
           />
 
           <BurnConfirmDialog

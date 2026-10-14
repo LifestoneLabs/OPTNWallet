@@ -22,6 +22,7 @@ import {
   formatSatsAsBch,
   matchUtxoByOutpoint,
   utxoSats,
+  type BuiltSourceOutputView,
   type RawTxIoView,
 } from '../../../utils/rawTransactionDetails';
 import useTokenMetadata from '../../../hooks/useTokenMetadata';
@@ -33,11 +34,33 @@ type RawTransactionDetailsProps = {
   selectedUtxos: UTXO[];
   currentNetwork: string;
   transactionId?: string;
+  sourceOutputs?: BuiltSourceOutputView[];
 };
 
 function prevoutTxidHex(hash: Uint8Array | number[]): string {
-  const bytes = Uint8Array.from(ensureUint8Array(hash));
-  return binToHex(bytes.reverse());
+  // libauth decode already reverses serialized LE into UI/Electrum order.
+  return binToHex(Uint8Array.from(ensureUint8Array(hash)));
+}
+
+function sourceOutputToken(
+  source: BuiltSourceOutputView | undefined
+): RawTxIoView['token'] {
+  const token = source?.token;
+  if (!token?.category) return null;
+  return {
+    category: token.category,
+    ftAmount:
+      typeof token.amount === 'bigint'
+        ? token.amount
+        : BigInt(token.amount ?? 0),
+    nft: token.nft
+      ? {
+          capability: token.nft.capability || 'none',
+          commitment: token.nft.commitment ?? '',
+        }
+      : null,
+    bcmr: null,
+  };
 }
 
 function toCashAddress(
@@ -72,6 +95,7 @@ const RawTransactionDetails: React.FC<RawTransactionDetailsProps> = ({
   selectedUtxos,
   currentNetwork,
   transactionId,
+  sourceOutputs = [],
 }) => {
   const { t } = useI18n();
   const decodedTx = useMemo(() => {
@@ -99,36 +123,50 @@ const RawTransactionDetails: React.FC<RawTransactionDetailsProps> = ({
 
     const inputs: RawTxIoView[] = decodedTx.inputs.map((input, index) => {
       const prevoutTxid = prevoutTxidHex(input.outpointTransactionHash);
+      const source = sourceOutputs[index];
       const matched = matchUtxoByOutpoint(
         selectedUtxos,
         prevoutTxid,
         input.outpointIndex
       );
       const token = matched?.token ?? matched?.token_data ?? null;
+      const fromSource = sourceOutputToken(source);
       return {
         kind: 'input',
         index,
-        sats: matched ? utxoSats(matched) : 0n,
+        sats:
+          source != null
+            ? typeof source.valueSatoshis === 'bigint'
+              ? source.valueSatoshis
+              : BigInt(source.valueSatoshis ?? 0)
+            : matched
+              ? utxoSats(matched)
+              : 0n,
         outpoint: formatOutpoint(prevoutTxid, input.outpointIndex),
         address: matched?.address ?? null,
         isOpReturn: false,
         opReturnChunks: [],
-        token: token?.category
+        token: fromSource
           ? {
-              category: token.category,
-              ftAmount:
-                typeof token.amount === 'bigint'
-                  ? token.amount
-                  : BigInt(token.amount ?? 0),
-              nft: token.nft
-                ? {
-                    capability: token.nft.capability || 'none',
-                    commitment: token.nft.commitment ?? '',
-                  }
-                : null,
-              bcmr: token.BcmrTokenMetadata ?? null,
+              ...fromSource,
+              bcmr: token?.BcmrTokenMetadata ?? fromSource.bcmr,
             }
-          : null,
+          : token?.category
+            ? {
+                category: token.category,
+                ftAmount:
+                  typeof token.amount === 'bigint'
+                    ? token.amount
+                    : BigInt(token.amount ?? 0),
+                nft: token.nft
+                  ? {
+                      capability: token.nft.capability || 'none',
+                      commitment: token.nft.commitment ?? '',
+                    }
+                  : null,
+                bcmr: token.BcmrTokenMetadata ?? null,
+              }
+            : null,
       };
     });
 
@@ -173,7 +211,7 @@ const RawTransactionDetails: React.FC<RawTransactionDetailsProps> = ({
     });
 
     return { inputs, outputs };
-  }, [builtTxid, currentNetwork, decodedTx, selectedUtxos]);
+  }, [builtTxid, currentNetwork, decodedTx, selectedUtxos, sourceOutputs]);
 
   const categories = useMemo(
     () =>
