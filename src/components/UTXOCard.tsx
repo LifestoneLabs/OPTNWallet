@@ -9,6 +9,7 @@ import TokenIdentityBadge from './ui/TokenIdentityBadge';
 import {
   formatAtomicTokenAmount,
   resolveTokenPresentation,
+  tokenPresentationFallbackFromBcmr,
 } from '../utils/tokenPresentation';
 import { coinDepth } from '../platform/desktop/fusionCoinDepth';
 import {
@@ -188,18 +189,12 @@ const UTXOCard: React.FC<UTXOCardProps> = ({ utxos, loading }) => {
       {utxos.map((utxo, i) => {
         const isToken = Boolean(utxo.token);
         const tokenData = isToken ? utxo.token : null;
-        const metadata = tokenData?.BcmrTokenMetadata || null;
         const category = tokenData?.category || null;
         const sharedMeta = category ? tokenMetadata[category] : null;
         const presentation = resolveTokenPresentation(
           category ?? '',
           sharedMeta,
-          {
-            name: metadata?.name ?? null,
-            symbol: metadata?.token.symbol ?? null,
-            decimals: metadata?.token.decimals ?? null,
-            iconUri: metadata?.uris?.icon ?? null,
-          }
+          tokenPresentationFallbackFromBcmr(tokenData?.BcmrTokenMetadata)
         );
 
         // ✅ Contract UTXOs may not have `value`, but do have `amount`

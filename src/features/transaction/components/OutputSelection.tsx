@@ -26,6 +26,7 @@ import NFTConfigPopup from './NFTConfigPopup';
 import OpReturnView from './OpReturnView';
 import useTokenMetadata from '../../../hooks/useTokenMetadata';
 import { useI18n } from '../../../i18n/useI18n';
+import { tokenPresentationFallbackFromBcmr } from '../../../utils/tokenPresentation';
 
 interface OutputSelectionProps {
   recipientAddress: string;
@@ -105,14 +106,9 @@ const OutputSelection: React.FC<OutputSelectionProps> = ({
         (utxo) => utxo.token?.category === selectedTokenCategory
       ) ?? null
     : null;
-  const selectedTokenFallback = selectedTokenUtxo?.token?.BcmrTokenMetadata
-    ? {
-        name: selectedTokenUtxo.token.BcmrTokenMetadata.name,
-        symbol: selectedTokenUtxo.token.BcmrTokenMetadata.token.symbol,
-        decimals: selectedTokenUtxo.token.BcmrTokenMetadata.token.decimals,
-        iconUri: selectedTokenUtxo.token.BcmrTokenMetadata.uris.icon ?? null,
-      }
-    : null;
+  const selectedTokenFallback = tokenPresentationFallbackFromBcmr(
+    selectedTokenUtxo?.token?.BcmrTokenMetadata
+  );
 
   useEffect(() => {
     if (showNFTCashToken) setTokenAmount(0);

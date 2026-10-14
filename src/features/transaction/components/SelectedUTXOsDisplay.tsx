@@ -13,6 +13,7 @@ import TokenIdentityBadge from '../../../components/ui/TokenIdentityBadge';
 import {
   formatAtomicTokenAmount,
   resolveTokenPresentation,
+  tokenPresentationFallbackFromBcmr,
 } from '../../../utils/tokenPresentation';
 import { coinDepth } from '../../../platform/desktop/fusionCoinDepth';
 import { outpointKey } from '../../../platform/desktop/CoinLabelService';
@@ -125,14 +126,9 @@ export default function SelectedUTXOsDisplay({
                 const isToken = !!utxo.token;
                 const cat = utxo.token?.category;
                 const meta = cat ? tokenMetadata[cat] : null;
-                const fallback = utxo.token?.BcmrTokenMetadata
-                  ? {
-                      name: utxo.token.BcmrTokenMetadata.name,
-                      symbol: utxo.token.BcmrTokenMetadata.token.symbol,
-                      decimals: utxo.token.BcmrTokenMetadata.token.decimals,
-                      iconUri: utxo.token.BcmrTokenMetadata.uris?.icon ?? null,
-                    }
-                  : null;
+                const fallback = tokenPresentationFallbackFromBcmr(
+                  utxo.token?.BcmrTokenMetadata
+                );
                 const presentation = resolveTokenPresentation(
                   cat ?? '',
                   meta,
