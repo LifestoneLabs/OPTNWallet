@@ -418,6 +418,67 @@ describe('TransactionManager', () => {
     expect(mockedStore.dispatch).toHaveBeenCalledTimes(1);
   });
 
+  it('addOutput rejects an FT-category output with amount 0', () => {
+    const tm = TransactionManager();
+
+    const selectedUtxos: UTXO[] = [
+      {
+        address: 'bitcoincash:qsource',
+        height: 0,
+        tx_hash: 'c'.repeat(64),
+        tx_pos: 1,
+        value: 2000,
+        token: { category: 'cat1', amount: 100 },
+      },
+    ];
+
+    expect(() =>
+      tm.addOutput(
+        'bitcoincash:qrecipient',
+        1000,
+        0n,
+        'cat1',
+        selectedUtxos,
+        []
+      )
+    ).toThrow('Fungible token outputs require a token amount greater than 0.');
+    expect(mockedStore.dispatch).not.toHaveBeenCalled();
+  });
+
+  it('addOutput still allows NFT outputs with token amount 0', () => {
+    const tm = TransactionManager();
+
+    const selectedUtxos: UTXO[] = [
+      {
+        address: 'bitcoincash:qsource',
+        height: 0,
+        tx_hash: 'c'.repeat(64),
+        tx_pos: 1,
+        value: 2000,
+        token: {
+          category: 'cat1',
+          amount: 0,
+          nft: { capability: 'none', commitment: 'aa' },
+        },
+      },
+    ];
+
+    const out = tm.addOutput(
+      'bitcoincash:qrecipient',
+      1000,
+      0n,
+      'cat1',
+      selectedUtxos,
+      []
+    );
+
+    expect(out?.token).toEqual({
+      amount: 0,
+      category: 'cat1',
+      nft: { capability: 'none', commitment: 'aa' },
+    });
+  });
+
   it('addOutput converts token recipients when no wallet token-address mapping exists', () => {
     const tm = TransactionManager();
 
@@ -625,6 +686,91 @@ describe('TransactionManager', () => {
     expect(mockedTxBuilderHelper).toHaveBeenCalledWith({
       allowImplicitFungibleTokenBurn: true,
     });
+  });
+
+  it('auto-change for a 6500-sat token+BCH UTXO is not 7220', async () => {
+    const hex254 = '00'.repeat(254);
+    const buildTransaction = vi
+      .fn()
+      .mockResolvedValueOnce({ hex: hex254, sourceOutputs: [] })
+      .mockResolvedValueOnce({ hex: hex254, sourceOutputs: [] })
+      .mockResolvedValueOnce({
+        hex: hex254,
+        sourceOutputs: [
+          { valueSatoshis: 6500n, txid: 'd'.repeat(64), vout: 0 },
+        ],
+      });
+
+    mockedTxBuilderHelper.mockReturnValue({
+      buildTransaction,
+      sendTransaction: vi.fn(),
+    } as never);
+
+    const selectedUtxos: UTXO[] = [
+      {
+        address: 'bitcoincash:qsource',
+        height: 1,
+        tx_hash: 'd'.repeat(64),
+        tx_pos: 0,
+        value: 6500,
+        amount: 6500,
+        satoshis: 0n,
+        token: { category: 'ab'.repeat(32), amount: 1n },
+      } as UTXO,
+    ];
+
+    const res = await TransactionManager().buildTransaction(
+      [
+        {
+          recipientAddress: 'bitcoincash:zdest',
+          amount: 1000,
+          token: { category: 'ab'.repeat(32), amount: 1n },
+        },
+      ],
+      null,
+      'bitcoincash:qchange',
+      selectedUtxos,
+      true
+    );
+
+    expect(res.errorMsg).toBe('');
+    expect(res.sourceOutputs[0]?.valueSatoshis).toBe(6500n);
+    const change = res.finalOutputs?.[1];
+    expect(change).toMatchObject({ recipientAddress: 'bitcoincash:qchange' });
+    const changeSats = Number((change as { amount: number | bigint }).amount);
+    expect(changeSats).toBeGreaterThan(0);
+    expect(changeSats).toBeLessThan(6500);
+    expect(changeSats).not.toBe(7220);
+    expect(1000 + changeSats).toBeLessThan(6500);
+    expect(6500 - 1000 - changeSats).toBeGreaterThan(0);
+  });
+
+  it('refuses to build when computed fee would be negative', async () => {
+    const buildTransaction = vi
+      .fn()
+      .mockResolvedValue({ hex: '00'.repeat(100), sourceOutputs: [] });
+    mockedTxBuilderHelper.mockReturnValue({
+      buildTransaction,
+      sendTransaction: vi.fn(),
+    } as never);
+
+    const res = await TransactionManager().buildTransaction(
+      [{ recipientAddress: 'bitcoincash:qdest', amount: 5000 }],
+      null,
+      'bitcoincash:qchange',
+      [
+        {
+          address: 'bitcoincash:qsource',
+          height: 0,
+          tx_hash: 'e'.repeat(64),
+          tx_pos: 0,
+          value: 1000,
+        },
+      ]
+    );
+
+    expect(res.finalTransaction).toBe('');
+    expect(res.errorMsg).toMatch(/fee is negative/);
   });
 
   it('buildTransaction returns error when no inputs are selected', async () => {

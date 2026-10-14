@@ -29,6 +29,23 @@ import {
 } from './feePolicy';
 import OutboundTransactionTracker from '../../services/OutboundTransactionTracker';
 import { isDesktopPlatform } from '../../utils/platform';
+import {
+  assertSafeTransactionValues,
+  isTokenCategorySelected,
+  toAtomicAmount,
+  utxoSats,
+} from '../../utils/detectTransactionBurns';
+import type {
+  BuiltSourceOutput,
+  BuiltTransaction,
+} from './TransactionBuilderHelper';
+
+function unwrapBuiltTx(result: string | BuiltTransaction): BuiltTransaction {
+  if (typeof result === 'string') {
+    return { hex: result, sourceOutputs: [] };
+  }
+  return result;
+}
 
 function deriveTxidFromRawTx(rawTX: string): string | null {
   try {
@@ -404,7 +421,7 @@ export default function TransactionManager() {
       amount: transferAmount || 0,
     };
 
-    if (selectedTokenCategory) {
+    if (isTokenCategorySelected(selectedTokenCategory)) {
       const existingTokenUTXO = selectedUtxos.find(
         (utxo) => utxo.token && utxo.token.category === selectedTokenCategory
       );
@@ -415,6 +432,15 @@ export default function TransactionManager() {
           utxo.tx_pos === 0 &&
           utxo.tx_hash === selectedTokenCategory
       );
+
+      const isNftOutput =
+        Boolean(existingTokenUTXO?.token?.nft) ||
+        (nftCapability !== undefined && nftCommitment !== undefined);
+      if (!isNftOutput && toAtomicAmount(tokenAmount) === 0n) {
+        throw new Error(
+          'Fungible token outputs require a token amount greater than 0.'
+        );
+      }
 
       if (existingTokenUTXO && existingTokenUTXO.token) {
         newOutput.token = {
@@ -507,24 +533,6 @@ export default function TransactionManager() {
   // Helpers (local, no new files)
   // ----------------------------
 
-  function utxoSats(utxo: UTXO): bigint {
-    const src = utxo as UTXO & { satoshis?: unknown };
-    const raw: unknown = src.satoshis ?? src.value ?? src.amount ?? 0;
-
-    if (typeof raw === 'bigint') return raw;
-    if (typeof raw === 'number') {
-      return BigInt(Number.isFinite(raw) ? Math.trunc(raw) : 0);
-    }
-    if (typeof raw === 'string') {
-      try {
-        return BigInt(raw.trim() || '0');
-      } catch {
-        return 0n;
-      }
-    }
-    return 0n;
-  }
-
   function outputSats(o: TransactionOutput): bigint {
     if ('opReturn' in o && o.opReturn !== undefined) return 0n;
 
@@ -589,6 +597,7 @@ export default function TransactionManager() {
     finalTransaction: string;
     finalOutputs: TransactionOutput[] | null;
     errorMsg: string;
+    sourceOutputs: BuiltSourceOutput[];
   }> => {
     const txBuilder = TransactionBuilderHelper({
       allowImplicitFungibleTokenBurn,
@@ -598,6 +607,7 @@ export default function TransactionManager() {
       finalTransaction: '',
       finalOutputs: null as TransactionOutput[] | null,
       errorMsg: '',
+      sourceOutputs: [] as BuiltSourceOutput[],
     };
 
     // track intended outputs so we can return them even on failure (debug UX)
@@ -623,10 +633,10 @@ export default function TransactionManager() {
       );
 
       // 1) Estimate bytes WITHOUT change first
-      const txNoChangeHex = await txBuilder.buildTransaction(
-        selectedUtxos,
-        outputsNoChange
+      const txNoChange = unwrapBuiltTx(
+        await txBuilder.buildTransaction(selectedUtxos, outputsNoChange)
       );
+      const txNoChangeHex = txNoChange.hex;
       const bytesNoChange = txBytesFromHex(txNoChangeHex);
       const feeNoChange = requiredFeeForBytes(bytesNoChange);
 
@@ -650,11 +660,13 @@ export default function TransactionManager() {
 
         // 2) Re-estimate bytes WITH placeholder change output (preferred)
         try {
-          const txWithChangeHex = await txBuilder.buildTransaction(
-            selectedUtxos,
-            [...outputsNoChange, placeholder]
+          const txWithChange = unwrapBuiltTx(
+            await txBuilder.buildTransaction(selectedUtxos, [
+              ...outputsNoChange,
+              placeholder,
+            ])
           );
-          bytesWithChange = txBytesFromHex(txWithChangeHex);
+          bytesWithChange = txBytesFromHex(txWithChange.hex);
         } catch (error: unknown) {
           bytesWithChange = estimateAddP2PKHOutputBytes(
             bytesNoChange,
@@ -668,6 +680,11 @@ export default function TransactionManager() {
 
         // Only add change if it is >= DUST
         if (remainder >= BigInt(DUST)) {
+          if (remainder > inputTotal) {
+            throw new Error(
+              'Refusing to build or broadcast: change exceeds input total.'
+            );
+          }
           plannedOutputs = [
             ...outputsNoChange,
             { recipientAddress: changeAddress, amount: Number(remainder) },
@@ -680,15 +697,22 @@ export default function TransactionManager() {
       intendedOutputs = plannedOutputs;
 
       // 3) Build final transaction
-      let finalHex = await txBuilder.buildTransaction(
-        selectedUtxos,
-        plannedOutputs
+      let finalBuilt = unwrapBuiltTx(
+        await txBuilder.buildTransaction(selectedUtxos, plannedOutputs)
       );
+      let finalHex = finalBuilt.hex;
 
       // 4) Validate min relay fee using ACTUAL bytes and ACTUAL fee paid.
       const actualBytes = txBytesFromHex(finalHex);
       const outputsTotal = sumOutputs(plannedOutputs);
-      const feePaid = inputTotal - outputsTotal;
+      const feePaid = assertSafeTransactionValues({
+        inputTotal,
+        outputTotal: outputsTotal,
+        changeSats:
+          plannedOutputs.length > outputsNoChange.length
+            ? outputSats(plannedOutputs[plannedOutputs.length - 1])
+            : undefined,
+      });
       const requiredActualFee = requiredFeeForBytes(actualBytes);
 
       if (feePaid < requiredActualFee) {
@@ -705,14 +729,18 @@ export default function TransactionManager() {
 
             intendedOutputs = outputsRetry;
 
-            finalHex = await txBuilder.buildTransaction(
-              selectedUtxos,
-              outputsRetry
+            finalBuilt = unwrapBuiltTx(
+              await txBuilder.buildTransaction(selectedUtxos, outputsRetry)
             );
+            finalHex = finalBuilt.hex;
 
             const bytesRetry = txBytesFromHex(finalHex);
             const outputsRetryTotal = sumOutputs(outputsRetry);
-            const feePaidRetry = inputTotal - outputsRetryTotal;
+            const feePaidRetry = assertSafeTransactionValues({
+              inputTotal,
+              outputTotal: outputsRetryTotal,
+              changeSats: outputSats(outputsRetry[outputsRetry.length - 1]),
+            });
             const requiredRetryFee = requiredFeeForBytes(bytesRetry);
 
             if (feePaidRetry < requiredRetryFee) {
@@ -730,6 +758,7 @@ export default function TransactionManager() {
             returnObj.bytecodeSize = bytesRetry;
             returnObj.finalTransaction = finalHex;
             returnObj.finalOutputs = outputsRetry;
+            returnObj.sourceOutputs = finalBuilt.sourceOutputs;
             returnObj.errorMsg = '';
             return returnObj;
           }
@@ -750,6 +779,7 @@ export default function TransactionManager() {
       returnObj.bytecodeSize = actualBytes;
       returnObj.finalTransaction = finalHex;
       returnObj.finalOutputs = plannedOutputs;
+      returnObj.sourceOutputs = finalBuilt.sourceOutputs;
       returnObj.errorMsg = '';
       return returnObj;
     } catch (error: unknown) {
