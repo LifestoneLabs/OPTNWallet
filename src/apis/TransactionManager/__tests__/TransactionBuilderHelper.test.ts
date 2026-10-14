@@ -153,7 +153,8 @@ describe('TransactionBuilderHelper', () => {
       ]
     );
 
-    expect(tx).toBe('deadbeef');
+    expect(tx.hex).toBe('deadbeef');
+    expect(tx.sourceOutputs[0]?.valueSatoshis).toBe(1000n);
 
     const builder = txBuilderInstances[0];
     expect(builder.addInputs).toHaveBeenCalledTimes(1);
@@ -173,13 +174,50 @@ describe('TransactionBuilderHelper', () => {
     });
   });
 
+  it('passes Electrum value as CashScript satoshis for a token+BCH UTXO', async () => {
+    mockedKeyService.fetchAddressPrivateKey.mockResolvedValue(
+      Uint8Array.from([1, 2, 3])
+    );
+
+    const helper = TransactionBuilderHelper();
+    const built = await helper.buildTransaction(
+      [
+        {
+          address: 'bitcoincash:qsource',
+          height: 1,
+          tx_hash: 'aa'.repeat(32),
+          tx_pos: 0,
+          value: 6500,
+          amount: 6500,
+          satoshis: 0n,
+          token: { category: 'ab'.repeat(32), amount: 1n },
+        } as never,
+      ],
+      [
+        {
+          recipientAddress: 'bitcoincash:zdest',
+          amount: 1000,
+          token: { category: 'ab'.repeat(32), amount: 1n },
+        },
+      ]
+    );
+
+    const addedInput = txBuilderInstances[0].addInputs.mock.calls[0][0][0];
+    expect(addedInput.satoshis).toBe(6500n);
+    expect(addedInput.token.amount).toBe(1n);
+    expect(built.sourceOutputs[0]?.valueSatoshis).toBe(6500n);
+    expect(built.sourceOutputs[0]?.valueSatoshis).not.toBe(1n);
+  });
+
   it('buildTransaction sets locktime for contract functions that use time keywords', async () => {
     mockGetContractInstanceByAddress.mockResolvedValue({
       artifact: {
         source: 'function unlockWithTime() { return tx.time > 0; }',
       },
     });
-    mockGetContractUnlockFunction.mockResolvedValue({ unlocker: 'contract-unlocker' });
+    mockGetContractUnlockFunction.mockResolvedValue({
+      unlocker: 'contract-unlocker',
+    });
 
     const helper = TransactionBuilderHelper();
     await helper.buildTransaction(

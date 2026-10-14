@@ -11,6 +11,7 @@ import type { TokenCapability } from './cashtokens';
 import ContractManager from '../apis/ContractManager/ContractManager';
 import type { ContractInstanceRow } from '../apis/ContractManager/ContractManager';
 import TransactionManager from '../apis/TransactionManager/TransactionManager';
+import type { BuiltSourceOutput } from '../apis/TransactionManager/TransactionBuilderHelper';
 import { store } from '../state/store';
 import { logError, toErrorMessage } from '../utils/errorHandling';
 import { isDesktopPlatform } from '../utils/platform';
@@ -462,6 +463,7 @@ class TransactionService {
     finalTransaction: string;
     finalOutputs: TransactionOutput[] | null;
     errorMsg: string;
+    sourceOutputs: BuiltSourceOutput[];
   }> {
     try {
       await assertCoinsNotHeld(coinHoldScope(), selectedUtxos);
@@ -471,6 +473,7 @@ class TransactionService {
         finalTransaction: '',
         finalOutputs: null,
         errorMsg: toErrorMessage(error, 'Unable to verify coin holds.'),
+        sourceOutputs: [],
       };
     }
     return await this.getTransactionManager().buildTransaction(
