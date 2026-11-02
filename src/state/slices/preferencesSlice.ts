@@ -24,6 +24,12 @@ type PreferencesState = {
   customFeeSatPerByte: number;
   /** Default share of an incoming Merchant Pay amount converted to the other asset. */
   merchantPayDefaultConversionBps: number;
+  /**
+   * Allow WizardConnect sign-in proofs (a wallet-built, unbroadcastable
+   * transaction that proves address ownership). Older persisted state has no
+   * value; treat missing as enabled.
+   */
+  enableWizardSignInProofs?: boolean;
 };
 
 const initialState: PreferencesState = {
@@ -36,6 +42,7 @@ const initialState: PreferencesState = {
   feeMode: 'auto',
   customFeeSatPerByte: 1.1,
   merchantPayDefaultConversionBps: DEFAULT_MERCHANT_PAY_CONVERSION_BPS,
+  enableWizardSignInProofs: true,
 };
 
 const preferencesSlice = createSlice({
@@ -76,6 +83,9 @@ const preferencesSlice = createSlice({
       state.customFeeSatPerByte =
         Number.isFinite(value) && value > 0 ? value : 1.1;
     },
+    setEnableWizardSignInProofs: (state, action: PayloadAction<boolean>) => {
+      state.enableWizardSignInProofs = action.payload;
+    },
     setMerchantPayDefaultConversionBps: (
       state,
       action: PayloadAction<number>
@@ -99,7 +109,11 @@ export const {
   setFeeMode,
   setCustomFeeSatPerByte,
   setMerchantPayDefaultConversionBps,
+  setEnableWizardSignInProofs,
 } = preferencesSlice.actions;
+
+export const selectWizardSignInProofsEnabled = (state: RootState): boolean =>
+  state.preferences?.enableWizardSignInProofs !== false;
 
 export const selectLocale = (state: RootState): SupportedLocale =>
   state.preferences.locale ?? 'en';
