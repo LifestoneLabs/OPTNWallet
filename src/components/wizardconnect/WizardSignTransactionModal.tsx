@@ -6,6 +6,9 @@ import {
   approveWizardSignRequest,
   rejectWizardSignRequest,
 } from '../../state/slices/wizardconnectSlice';
+import { previewWizardSignInProof } from '../../services/wizardconnect/signInProofPreview';
+import { selectWizardSignInProofsEnabled } from '../../state/slices/preferencesSlice';
+import WizardSignInProofView from './WizardSignInProofView';
 import { ensureUint8Array, parseSatoshis } from '../../utils/binary';
 import { PREFIX, SATSINBITCOIN } from '../../utils/constants';
 import { selectCurrentNetwork } from '../../state/selectors/networkSelectors';
@@ -53,10 +56,12 @@ export default function WizardSignTransactionModal() {
   const connections = useSelector(
     (state: RootState) => state.wizardconnect.activeConnections
   );
+  const signInProofsEnabled = useSelector(selectWizardSignInProofsEnabled);
 
   if (!pending) return null;
 
   const connection = connections[pending.connectionId];
+  const signInProof = previewWizardSignInProof(pending.request);
   const payload = pending.request.transaction;
   let decoded: ReturnType<typeof decodeWizardConnectTransaction> | null = null;
   try {
@@ -111,6 +116,40 @@ export default function WizardSignTransactionModal() {
       });
     }
   };
+
+  if (signInProof.kind !== 'none') {
+    const proofApprove = async () => {
+      if (signInProof.kind !== 'proof' || !signInProofsEnabled) return;
+      try {
+        await dispatch(approveWizardSignRequest()).unwrap();
+        await Toast.show({ text: t('wizard.approved') });
+      } catch (error) {
+        console.error(
+          '[WizardConnect] Failed to sign the sign-in proof',
+          error
+        );
+        await Toast.show({
+          text: t('wizard.approveFailed', { message: toErrorMessage(error) }),
+        });
+      }
+    };
+    return (
+      <WizardSignInProofView
+        dappName={
+          connection?.dappName ?? connection?.label ?? t('wizard.unknownDapp')
+        }
+        schemeLabel={
+          signInProof.kind === 'proof' ? signInProof.schemeLabel : undefined
+        }
+        address={signInProof.kind === 'proof' ? signInProof.address : undefined}
+        code={signInProof.kind === 'proof' ? signInProof.code : undefined}
+        error={signInProof.kind === 'invalid' ? signInProof.message : undefined}
+        disabledBySetting={!signInProofsEnabled}
+        onApprove={() => void proofApprove()}
+        onReject={() => void handleReject()}
+      />
+    );
+  }
 
   return (
     <div className="wallet-popup-backdrop">
